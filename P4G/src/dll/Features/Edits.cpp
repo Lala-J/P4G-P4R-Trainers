@@ -115,4 +115,24 @@ void SetPersonaSkill(int slot, int index, uint16_t skill) {
     });
 }
 
+void SetUnitHpSp(int charId, int hp, int sp) {
+    if (charId < 1 || charId > Game::kUnits) return;
+    GameThread::Post([charId, hp, sp] {
+        if (!CoreOk()) return;
+        Game::Unit* u = &Units()[charId - 1];
+        uint16_t oldHp = u->hp, oldSp = u->sp;
+        // Through AddHP / AddSP, so the game clamps to 0..max exactly as it always does.
+        if (hp >= 0 && hp != u->hp) Natives::AddHP(u, hp - int(u->hp));
+        if (sp >= 0 && sp != u->sp) Natives::AddSP(u, sp - int(u->sp));
+        if (u->hp == oldHp && u->sp == oldSp) return;
+        static const char* n[] = {"", "Yu", "Yosuke", "Chie", "Yukiko", "Rise", "Kanji", "Naoto", "Teddie"};
+        Journal::Record(Fmt("%s HP %u → %u, SP %u → %u", n[charId], oldHp, u->hp, oldSp, u->sp),
+                        [charId, oldHp, oldSp] {
+                            Game::Unit* v = &Units()[charId - 1];
+                            Natives::AddHP(v, int(oldHp) - int(v->hp));
+                            Natives::AddSP(v, int(oldSp) - int(v->sp));
+                        });
+    });
+}
+
 }  // namespace Edits

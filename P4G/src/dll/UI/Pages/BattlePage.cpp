@@ -8,6 +8,7 @@
 #include "Engine/Names.h"
 #include "Engine/Natives.h"
 #include "Features/Battle.h"
+#include "Features/Edits.h"
 #include "Features/Spoilers.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -36,7 +37,7 @@ void MemberCard(int c, float w) {
     uint16_t mh = Natives::GetMaxHP(live), ms = Natives::GetMaxSP(live);
     char id[16];
     snprintf(id, sizeof id, "unit%d", c);
-    W::BeginCard(id, ImVec2(w, 104 * sc), c == 1 ? C::Yellow : C::Blue);
+    W::BeginCard(id, ImVec2(w, 140 * sc), c == 1 ? C::Yellow : C::Blue);
     W::Title(CharName(c));
     ImGui::SameLine();
     W::Dim("Lv %u", c == 1 ? u.level : u.persona.level);
@@ -45,6 +46,20 @@ void MemberCard(int c, float w) {
     W::Bar(mh ? float(u.hp) / mh : 0, ImVec2(w - 30 * sc, 0), C::Green, buf);
     snprintf(buf, sizeof buf, "SP %u / %u", u.sp, ms);
     W::Bar(ms ? float(u.sp) / ms : 0, ImVec2(w - 30 * sc, 0), IM_COL32(220, 90, 200, 255), buf);
+    static int hpEdit[9] = {}, spEdit[9] = {};
+    static int lastHp[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1}, lastSp[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
+    if (lastHp[c] != u.hp) hpEdit[c] = lastHp[c] = u.hp;
+    if (lastSp[c] != u.sp) spEdit[c] = lastSp[c] = u.sp;
+    ImGui::PushID(c);
+    ImGui::SetNextItemWidth(70 * sc);
+    ImGui::DragInt("##hp", &hpEdit[c], 1, 0, mh ? mh : 999, "HP %d");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(70 * sc);
+    ImGui::DragInt("##sp", &spEdit[c], 1, 0, ms ? ms : 999, "SP %d");
+    ImGui::SameLine();
+    if (W::RiskButton("Set", Risk::Caution, "Sets HP / SP through the game's own helpers (0 to max)."))
+        Edits::SetUnitHpSp(c, hpEdit[c], spEdit[c]);
+    ImGui::PopID();
     W::EndCard();
 }
 

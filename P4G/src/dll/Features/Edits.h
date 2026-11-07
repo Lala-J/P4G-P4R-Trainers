@@ -14,5 +14,6 @@ void SetSocialStat(int stat, uint16_t points);
 void SetItemCount(uint16_t id, uint8_t count);           // through the game's SetItemCount
 void SetPersonaStat(int slot, int stat, uint8_t base);   // stock slot 0..11, stat 0..4
 void SetPersonaSkill(int slot, int index, uint16_t skillId);
+void SetUnitHpSp(int charId, int hp, int sp);              // -1 = leave; clamped by the game's own helpers
 
 }  // namespace Edits
