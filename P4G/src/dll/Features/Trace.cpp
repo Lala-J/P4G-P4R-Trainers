@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "Engine/Addresses.h"
+#include "Engine/FlowCaller.h"
 #include "Engine/GameTypes.h"
 #include "Engine/HostCheck.h"
 #include "Engine/SigScan.h"
@@ -84,8 +85,33 @@ bool InstallHooks() {
     return true;
 }
 
+void FlowSelfCheck() {
+    // Compare script-function results with what the trainer reads directly.
+    auto r = Flow::Call(Flow::Fn::GET_SL_LEVEL, {7});  // Yosuke
+    const auto* links = reinterpret_cast<const Game::Link*>(Addr::SaveBlock + Game::Off::Links);
+    int direct = -1;
+    for (int i = 0; i < Game::kLinks; ++i)
+        if (links[i].id == 7) direct = links[i].rank;
+    LOGI("trace: flow GET_SL_LEVEL(7) ok=%d done=%d value=%lld, direct rank %d", r.ok, r.done,
+         (long long)r.value, direct);
+    for (int flag : {35, 36, 48}) {
+        auto b = Flow::Call(Flow::Fn::BIT_CHK, {flag});
+        const auto* f = reinterpret_cast<const uint8_t*>(Addr::SaveBlock + Game::Off::Flags);
+        LOGI("trace: flow BIT_CHK(%d) ok=%d value=%lld, direct %d", flag, b.ok, (long long)b.value,
+             (f[flag >> 3] >> (flag & 7)) & 1);
+    }
+    auto c = Flow::Call(Flow::Fn::GET_CNT, {16});
+    const auto* cnt = reinterpret_cast<const uint32_t*>(Addr::SaveBlock + Game::Off::Counters);
+    LOGI("trace: flow GET_CNT(16) ok=%d value=%lld, direct %u", c.ok, (long long)c.value, cnt[16]);
+}
+
 void Tick() {
     if (!g_on || !HostCheck::GroupOk("core")) return;
+    static bool checked = false;
+    if (!checked) {
+        checked = true;
+        FlowSelfCheck();
+    }
     const auto* flags = reinterpret_cast<const uint8_t*>(Addr::SaveBlock + Game::Off::Flags);
     const auto* counters = reinterpret_cast<const uint32_t*>(Addr::SaveBlock + Game::Off::Counters);
     if (g_havePrev) {

@@ -90,7 +90,7 @@ struct Probe {
 inline constexpr Probe kProbes[] = {
     {"SaveBlock pointer", "core", ProbeKind::PtrEq, pSaveBlock, nullptr, SaveBlock},
     {"GetFlowInput", "flow", ProbeKind::Code, GetFlowInput,
-     "40 53 48 83 EC 20 8B D9 48 8D 0D ?? ?? ?? ?? E8", 0},
+     "40 53 48 83 EC 20 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 15 ?? ?? ?? ?? 8B 42 20 2B C3 4C 63 C0 41 0F BE 4C 10 23", 0},
     {"Flow table: Common[0]", "flow", ProbeKind::TableFn, FlowTableCommon, nullptr, 0},
     {"Flow table: Field[0]", "flow", ProbeKind::TableFn, FlowTableField, nullptr, 0},
     {"Flow table: Event[0]", "flow", ProbeKind::TableFn, FlowTableEvent, nullptr, 0},
