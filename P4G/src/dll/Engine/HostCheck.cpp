@@ -31,6 +31,19 @@ bool CheckProbe(const Addr::Probe& p) {
         }
         case K::PtrEq:
             return Sig::Readable(p.addr, 8) && *reinterpret_cast<const uint64_t*>(p.addr) == p.value;
+        case K::LazyPtrEq:
+            if (!Sig::Readable(p.addr, 8)) return false;
+            return *reinterpret_cast<const uint64_t*>(p.addr) == p.value ||
+                   *reinterpret_cast<const uint64_t*>(p.addr) == 0;
+        case K::LazyCode: {
+            if (Sig::MatchAt(p.addr, p.sig)) return true;
+            auto pat = Sig::Parse(p.sig);
+            if (!Sig::Readable(p.addr, pat.bytes.size())) return false;
+            auto* b = reinterpret_cast<const uint8_t*>(p.addr);
+            for (size_t i = 0; i < pat.bytes.size(); ++i)
+                if (b[i]) return false;
+            return true;
+        }
         case K::TableFn:
             return Sig::Readable(p.addr, 8) &&
                    InRange(*reinterpret_cast<const uint64_t*>(p.addr), Addr::kSharedStart,

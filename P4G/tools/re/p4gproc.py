@@ -10,6 +10,7 @@ can write to the game.
     python p4gproc.py dis   <addr> [len]         # disassemble (needs capstone)
     python p4gproc.py scan  "<AOB pattern>" [section]   # e.g. "48 8B ?? ?? 90", section .shared
     python p4gproc.py refs  <target> [section]   # rel32 call/jmp/lea/mov references to target
+    python p4gproc.py find  "<text>" | hex:<bytes>       # search all readable memory
 
 Addresses accept 0x-hex or 'P4G.exe+0x1234'.
 """
@@ -146,6 +147,46 @@ class Proc:
         return hits
 
 
+class MBI(ctypes.Structure):
+    _fields_ = [("BaseAddress", ctypes.c_void_p), ("AllocationBase", ctypes.c_void_p),
+                ("AllocationProtect", wt.DWORD), ("PartitionId", wt.WORD),
+                ("RegionSize", ctypes.c_size_t), ("State", wt.DWORD), ("Protect", wt.DWORD),
+                ("Type", wt.DWORD)]
+
+
+k32.VirtualQueryEx.argtypes = [wt.HANDLE, ctypes.c_void_p, ctypes.POINTER(MBI), ctypes.c_size_t]
+k32.VirtualQueryEx.restype = ctypes.c_size_t
+
+
+def regions(p, start=0x10000, end=0x7FFFFFFF0000):
+    """Committed, readable, non-guard regions."""
+    a = start
+    m = MBI()
+    while a < end and k32.VirtualQueryEx(p.h, ctypes.c_void_p(a), ctypes.byref(m), ctypes.sizeof(m)):
+        base = m.BaseAddress or 0
+        size = m.RegionSize
+        if m.State == 0x1000 and not (m.Protect & 0x101) and m.Protect & 0xEE:
+            yield base, size
+        a = base + size
+
+
+def find_all(p, needle, limit=40):
+    hits = []
+    for base, size in regions(p):
+        for off in range(0, size, 0x400000):
+            data = p.try_read(base + off, min(0x400000 + len(needle), size - off))
+            if not data:
+                continue
+            i = data.find(needle)
+            while i != -1:
+                if i < 0x400000:
+                    hits.append(base + off + i)
+                    if len(hits) >= limit:
+                        return hits
+                i = data.find(needle, i + 1)
+    return hits
+
+
 def hexdump(base, data):
     for i in range(0, len(data), 16):
         row = data[i:i + 16]
@@ -208,6 +249,12 @@ def main(argv):
         sec = argv[3] if len(argv) > 3 else ".shared"
         for h in p.scan(argv[2], sec):
             print(f"0x{h:X}  (P4G.exe+0x{h - p.base:X})")
+    elif cmd == "find":
+        # find "<text>" | find hex:<bytes>   (whole process)
+        arg = argv[2]
+        needle = bytes.fromhex(arg[4:]) if arg.startswith("hex:") else arg.encode("latin-1")
+        for h in find_all(p, needle):
+            print(f"0x{h:X}")
     elif cmd == "refs":
         sec = argv[3] if len(argv) > 3 else ".shared"
         for h in refs(p, p.addr(argv[2]), sec):

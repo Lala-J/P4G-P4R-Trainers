@@ -11,6 +11,7 @@
 #include "UI/Shell.h"
 #include "UI/Theme.h"
 #include "Util/Log.h"
+#include "Util/Settings.h"
 
 namespace {
 
@@ -55,6 +56,9 @@ bool Init(IDXGISwapChain* sc) {
     sc->GetDesc(&d);
     g_hwnd = d.OutputWindow;
     if (d.BufferDesc.Height) g_bbHeight = d.BufferDesc.Height;
+
+    g_userScale = Settings::GetFloat("ui", "scale", 1.0f);
+    if (g_userScale < 0.6f || g_userScale > 2.0f) g_userScale = 1.0f;
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -234,6 +238,7 @@ void SetUserScale(float s) {
     if (s != g_userScale) {
         g_userScale = s;
         g_rebuild = true;
+        Settings::SetFloat("ui", "scale", s);
     }
 }
 
