@@ -11,6 +11,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gamewin import bring_to_front, find_window, is_foreground  # noqa: E402
 from keys import press  # noqa: E402
+from title import classify, grab  # noqa: E402
 from p4gproc import Proc  # noqa: E402
 
 BATTLE_MGR = 0x140EC08F0
@@ -55,6 +56,9 @@ def main():
             idle += 1
         if not is_foreground(h):
             bring_to_front(h)
+        if idle >= 2 and classify(grab(h, 0.25)) == "saveload":
+            print("stopped: a save/load screen is showing")
+            return 1
         if idle >= 2:
             press("space", 150)          # advance dialogue / confirm a prompt
             if idle % 4 == 0:

@@ -29,8 +29,24 @@ def grab(hwnd, scale=0.1):
     return img.resize((max(1, int(img.width * scale)), max(1, int(img.height * scale))))
 
 
+def _strip_yellow(img, y0, y1):
+    w, h = img.size
+    c = img.convert("RGB").crop((0, int(h * y0), w, max(int(h * y0) + 1, int(h * y1)))).resize((96, 12))
+    raw = c.tobytes()
+    px = [tuple(raw[i:i + 3]) for i in range(0, len(raw), 3)]
+    return sum(1 for r, g, b in px if r > 200 and g > 150 and b < 120) / len(px)
+
+
+def is_save_or_load(img):
+    """The save / load screens have solid yellow strips at the top and bottom."""
+    return _strip_yellow(img, 0.0, 0.12) > 0.8 and _strip_yellow(img, 0.88, 1.0) > 0.7
+
+
 def classify(img):
-    px = list(img.convert("RGB").getdata())
+    if is_save_or_load(img):
+        return "saveload"
+    raw = img.convert("RGB").tobytes()
+    px = [tuple(raw[i:i + 3]) for i in range(0, len(raw), 3)]
     n = len(px)
     blue = sum(1 for r, g, b in px if b > 120 and b > r + 50 and b > g + 50) / n
     yellow = sum(1 for r, g, b in px if r > 200 and g > 190 and b < 110) / n

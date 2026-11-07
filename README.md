@@ -35,20 +35,24 @@ The first time the trainer loads in a session it copies your save folder to
 
 | Page | What you get | Status |
 |---|---|---|
-| Dashboard | Build check, controls, what's loaded | ✅ |
+| Dashboard | Today's date and time slot, the case deadline, links ready to rank up, your stats | ✅ |
 | Today | Everything you can do in the current time slot and where to find it, ordered by priority: last chances, romance, social links and hangouts, clubs and jobs, everything else | planned |
-| Battle | Infinite HP/SP, no ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee | planned |
-| Inventory | Every item in the game: add, remove, set counts; items that never run out | planned |
-| Personas | Edit stock and compendium, give or remove Personas, fusion preview, Velvet Room rule overrides | planned |
-| Social Links | Rank, points, availability and prerequisites for every link; rank-ups that also replay the link's own story effects | planned |
+| Battle | Infinite HP (no damage, or never below 1) and infinite SP, per member HP/SP, refill | ✅ |
+| Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee | planned |
+| Inventory | Every item in the game by category, set counts through the game's own routine, items that never run out in battle or the camp menu | ✅ |
+| Personas | Yu's stock and every party member's Persona; edit stats and skills | ✅ |
+| Personas (more) | Give or remove Personas, compendium, fusion preview, Velvet Room rule overrides | planned |
+| Social Links | Rank and points against the game's own thresholds for every link, "ready to rank up", locked-out pairs, spoiler-hidden unmet links | ✅ |
+| Social Links (edits) | Rank-ups that also replay the link's own story effects, with prerequisite warnings | planned |
 | Romance | Pick a partner by portrait and follow a step-by-step route; every step stays hidden until you reveal it | planned |
-| Case File | The current case, its deadline, and the usable days left | planned |
-| Protagonist | Courage, Knowledge, Diligence, Understanding, Expression, money, equipment | planned |
+| Case File | The current case, its deadline, days left, and the case timeline | ✅ |
+| Protagonist | Level and EXP; Courage, Knowledge, Diligence, Understanding, Expression with ranks; money; equipment | ✅ |
 | Levels & EXP | Levels and EXP for Yu, party members and every Persona, using the game's own level-up routines | planned |
 | Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel | planned |
 | NG+ & Unlocks | New Game+ carry-overs granted one at a time, with warnings | planned |
 | Field & Dungeon | Shops from anywhere, floor select, party changes in dungeons, save anywhere, auto-advance for dialogue | planned |
-| Advanced | Flag and counter browser, undo journal | planned |
+| Advanced | Undo journal for every change | ✅ |
+| Advanced (more) | Labelled flag and counter browser | planned |
 
 #### Safety
 

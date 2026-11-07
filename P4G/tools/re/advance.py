@@ -12,6 +12,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gamewin import bring_to_front, find_window, is_foreground  # noqa: E402
 from keys import press  # noqa: E402
+from title import classify, grab  # noqa: E402
 from p4gproc import Proc  # noqa: E402
 
 BATTLE_MGR = 0x140EC08F0
@@ -36,6 +37,10 @@ def main():
             return 0
         if not is_foreground(h):
             print("aborted: game lost focus")
+            return 1
+        # Never confirm on a save / load screen (the end-of-day save prompt overwrites a slot).
+        if classify(grab(h, 0.25)) == "saveload":
+            print("stopped: a save/load screen is showing; handle it by hand")
             return 1
         press(key, 150)
         time.sleep(gap)

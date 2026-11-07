@@ -22,10 +22,13 @@ bool g_never = false;
 using SetItem_t = void (*)(uint16_t, uint8_t);
 SetItem_t o_SetItem = nullptr;
 
-// Call sites (address of the `call SetItemCount`) that consume an item by using it.
-// Each entry was confirmed by using an item in game with logging on. [DRV]
+// Call sites (address of the `call SetItemCount`) that consume an item by *using* it. [DRV]
 constexpr uintptr_t kUseSites[] = {
-    0,  // filled in as each path is confirmed
+    // Camp menu "Item" (field and dungeon, incl. Goho-M): watched live, Medicine 3 -> 2.
+    0x140173D81,
+    // Battle action cost routine: Turn+0xAC command 3 (Item) decrements item Turn+0xB0 by one.
+    // Command 2 (Skill) takes the SP/HP-cost branch of the same function instead.
+    0x14009E743,
 };
 
 bool IsUseSite(uintptr_t ret) {
