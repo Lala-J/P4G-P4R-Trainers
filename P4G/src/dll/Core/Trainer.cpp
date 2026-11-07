@@ -2,6 +2,8 @@
 
 #include "Engine/HostCheck.h"
 #include "Engine/SaveBackup.h"
+#include "Features/Battle.h"
+#include "Features/Inventory.h"
 #include "Hooks/D3D11Hook.h"
 #include "Hooks/Hook.h"
 #include "Hooks/InputHooks.h"
@@ -37,6 +39,10 @@ DWORD WINAPI MainThread(LPVOID) {
         // the rendering and input hooks don't depend on the host check. Game hooks will.
         bool d3d = D3DHook::Install();
         bool in = Input::Install();
+        if (hc.supported) {
+            Battle::InstallHooks();
+            InventoryFx::InstallHooks();
+        }
         g_hooks = d3d && Hooks::EnableAll();
         LOGI("hooks: d3d %s, input %s, %d total", d3d ? "ok" : "FAILED", in ? "ok" : "partial",
              Hooks::Count());

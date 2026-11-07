@@ -1,6 +1,7 @@
 #include "UI/Widgets.h"
 
 #include <cstdarg>
+#include <cfloat>
 #include <cstdio>
 
 #include "UI/Overlay.h"
@@ -107,6 +108,46 @@ ImU32 ArcanaColor(int a) {
         IM_COL32(230, 230, 200, 255), IM_COL32(150, 220, 160, 255), IM_COL32(200, 120, 220, 255),
     };
     return c[(a >= 0 ? a : 0) % (int)(sizeof c / sizeof c[0])];
+}
+
+bool RiskButton(const char* label, Theme::Risk risk, const char* why) {
+    bool clicked = ImGui::Button(label);
+    if (ImGui::IsItemHovered() && why && *why) {
+        ImGui::BeginTooltip();
+        RiskBadge(risk);
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
+        ImGui::TextUnformatted(why);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+    if (risk == Risk::Safe || risk == Risk::Caution) return clicked;
+
+    char popup[160];
+    snprintf(popup, sizeof popup, "Confirm##%s", label);
+    if (clicked) ImGui::OpenPopup(popup);
+    bool apply = false;
+    ImGui::SetNextWindowSizeConstraints(ImVec2(420 * Overlay::Scale(), 0), ImVec2(720 * Overlay::Scale(), FLT_MAX));
+    if (ImGui::BeginPopupModal(popup, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar)) {
+        RiskBadge(risk);
+        ImGui::PushFont(g_fonts.bold);
+        ImGui::TextUnformatted(label);
+        ImGui::PopFont();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 34);
+        ImGui::TextUnformatted(why ? why : "");
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(RiskColor(risk)));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(C::Black));
+        if (ImGui::Button("Apply anyway")) {
+            apply = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::PopStyleColor(2);
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+    return apply;
 }
 
 int Columns(float minCardWidth) {

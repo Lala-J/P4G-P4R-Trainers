@@ -3,6 +3,8 @@
 
 #include <imgui.h>
 
+#include "UI/Theme.h"
+
 namespace W {
 
 // A bordered card. Always pair with EndCard().
@@ -16,6 +18,11 @@ void Dim(const char* fmt, ...);
 void Title(const char* text);  // bold line
 
 ImU32 ArcanaColor(int arcana);
+
+// A button gated by risk. Safe / Caution act on click (Caution explains itself on hover);
+// Story-sensitive / Dangerous open a confirmation that says exactly what will happen.
+// Returns true when the action should run.
+bool RiskButton(const char* label, Theme::Risk risk, const char* why);
 
 // Number of card columns that fit in the current content width.
 int Columns(float minCardWidth);

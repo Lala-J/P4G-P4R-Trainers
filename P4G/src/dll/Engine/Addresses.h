@@ -63,6 +63,9 @@ constexpr uintptr_t pCampMenu = 0x140EC0A40;    // non-null while the camp menu 
 // --- Natives -------------------------------------------------------------------------------
 constexpr uintptr_t SetItemCount = 0x14019EC90;  // void (u16 id, u8 n), clamps 99  [DRV]
 constexpr uintptr_t GetMaxHP = 0x1400CF510;      // thunk into .arch               [DRV]
+constexpr uintptr_t GetMaxSP = 0x1400CF790;      // thunk; paired with GetMaxHP in the game's full heal [DRV]
+constexpr uintptr_t AddHP = 0x1400CFA20;         // void (Unit*, int delta): hp = clamp(hp+delta, 0, max) [DRV]
+constexpr uintptr_t AddSP = 0x1400CFA70;         // void (Unit*, int delta): sp = clamp(sp+delta, 0, max) [DRV]
 constexpr uintptr_t CmmCanRankUp = 0x1401AF130;  // u16 (u16 id)                   [DRV]
 constexpr uintptr_t CmmGetRank = 0x1401AE7F0;    // u16 (u16 id)                   [DRV]
 
@@ -107,6 +110,11 @@ inline constexpr Probe kProbes[] = {
     {"Skill names", "names", ProbeKind::LazyCode, SkillNames + 0x100 * 0x17, "31 30 30 00", 0},
     {"EXP curve", "levels", ProbeKind::Code, McExpCurve, "00 00 00 00 1C 00 00 00 42 00 00 00", 0},
     {"cmmCanRankUp", "links", ProbeKind::Code, CmmCanRankUp, "48 89 5C 24 10 48 89 6C 24 18 56 48 83 EC 20 0F B7 F1", 0},
+    {"GetMaxSP thunk", "battle", ProbeKind::Thunk, GetMaxSP, nullptr, 0},
+    {"AddHP", "battle", ProbeKind::Code, AddHP,
+     "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 8B DA 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B7 57 08", 0},
+    {"AddSP", "battle", ProbeKind::Code, AddSP,
+     "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 8B DA 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B7 57 0A", 0},
 };
 
 }  // namespace Addr

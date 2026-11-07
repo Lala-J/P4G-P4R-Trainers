@@ -35,8 +35,6 @@ void PagePlanned(const char* milestone, const char* const* lines) {
 
 PLANNED(DrawToday, "M4b", "Everything you can do in the current time slot, and where.",
         "Priority: last chances > romance > links / hangouts > clubs / jobs > the rest.")
-PLANNED(DrawBattle, "M2 / M4c", "Infinite HP & SP, no ailments or downs, enemies always miss,",
-        "always crit, forced 1 More, weakness override, unlimited Persona swaps.")
 PLANNED(DrawRomance, "M4c", "Pick a partner by portrait and follow a step-by-step route,",
         "with every step hidden until you choose to reveal it.")
 PLANNED(DrawLevels, "M4", "Levels and EXP for Yu, every party member and every Persona,",
@@ -46,7 +44,6 @@ PLANNED(DrawIntel, "M4b", "Reveal every enemy's affinities in the game's own Ana
 PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
 PLANNED(DrawField, "M4c", "Shops from anywhere, floor select, party changes in dungeons,",
         "save anywhere, auto-advance for dialogue.")
-PLANNED(DrawAdvanced, "M4", "Flag and counter browser with labels, raw edits, and the undo journal.")
 
 struct PageDef {
     const char* name;
@@ -56,12 +53,12 @@ struct PageDef {
 
 const PageDef kPages[] = {
     {"Dashboard", Pages::Dashboard, true},     {"Today", DrawToday, false},
-    {"Battle", DrawBattle, false},             {"Inventory", Pages::Inventory, true},
+    {"Battle", Pages::BattlePage, true},             {"Inventory", Pages::Inventory, true},
     {"Personas", Pages::Personas, true},       {"Social Links", Pages::SocialLinks, true},
     {"Romance", DrawRomance, false},           {"Case File", Pages::CaseFile, true},
     {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", DrawLevels, false},
     {"Enemy Intel", DrawIntel, false},         {"NG+ & Unlocks", DrawNgPlus, false},
-    {"Field & Dungeon", DrawField, false},     {"Advanced", DrawAdvanced, false},
+    {"Field & Dungeon", DrawField, false},     {"Advanced", Pages::Advanced, true},
     {"Settings", Pages::Settings, true},       {"About", Pages::About, true},
 };
 constexpr int kPageCount = int(sizeof kPages / sizeof kPages[0]);

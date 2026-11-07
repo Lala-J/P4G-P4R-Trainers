@@ -9,6 +9,8 @@ void SocialLinks();
 void Protagonist();
 void Inventory();
 void Personas();
+void BattlePage();
+void Advanced();
 void Settings();
 void About();
 

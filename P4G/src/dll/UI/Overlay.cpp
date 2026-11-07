@@ -7,6 +7,7 @@
 #include <imgui_impl_win32.h>
 #include <atomic>
 
+#include "Engine/GameThread.h"
 #include "Hooks/InputHooks.h"
 #include "UI/Shell.h"
 #include "UI/Theme.h"
@@ -75,6 +76,9 @@ bool Init(IDXGISwapChain* sc) {
     Input::InstallWndProc(g_hwnd);
 
     g_ready = true;
+    DWORD winTid = GetWindowThreadProcessId(g_hwnd, nullptr);
+    LOGI("threads: present %lu, window owner %lu (%s)", GetCurrentThreadId(), winTid,
+         winTid == GetCurrentThreadId() ? "same thread" : "different threads");
     LOGI("overlay ready: backbuffer %ux%u, UI scale %.2f", d.BufferDesc.Width, d.BufferDesc.Height,
          Overlay::Scale());
     return true;
@@ -144,6 +148,9 @@ void Toggle() {
 
 void OnPresent(IDXGISwapChain* sc) {
     if (g_unloading.load()) return;
+    // Queued game changes apply here, at the top of the frame, on the game's main thread.
+    GameThread::BindToCurrent();
+    GameThread::Drain();
     if (!g_ready && (g_initFailed || !Init(sc))) return;
 
     if ((++g_frame % 120) == 0) Input::PollLateModules();
