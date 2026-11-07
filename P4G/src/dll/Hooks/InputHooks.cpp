@@ -249,7 +249,9 @@ bool ImGuiWantsMessage(UINT m) {
 LRESULT CALLBACK WndProc_Hook(HWND h, UINT m, WPARAM w, LPARAM l) {
     Hooks::Guard g;
     bool repeat = (l & (1 << 30)) != 0;
-    if (Input::g_debug && (m == WM_KEYDOWN || m == WM_KEYUP || m == WM_SYSKEYDOWN))
+    if (Input::g_debug && (m == WM_KEYDOWN || m == WM_KEYUP || m == WM_SYSKEYDOWN || m == WM_LBUTTONDOWN ||
+                           m == WM_LBUTTONUP || m == WM_SETFOCUS || m == WM_KILLFOCUS ||
+                           m == WM_ACTIVATEAPP || m == WM_ACTIVATE || m == WM_MOUSEACTIVATE || m == WM_CAPTURECHANGED))
         LOGI("input: wndproc msg 0x%X vk 0x%llX open=%d", m, (unsigned long long)w, Overlay::IsOpen());
     if ((m == WM_KEYDOWN || m == WM_SYSKEYDOWN) && (int)w == g_toggleVk.load()) {
         if (!repeat) Overlay::Toggle();
@@ -258,6 +260,11 @@ LRESULT CALLBACK WndProc_Hook(HWND h, UINT m, WPARAM w, LPARAM l) {
     if ((m == WM_KEYUP || m == WM_SYSKEYUP) && (int)w == g_toggleVk.load()) return 0;
 
     if (Overlay::IsOpen() && ImGuiWantsMessage(m)) {
+        // A lone Alt (e.g. Alt+Tab, or a focus change) would toggle ImGui's menu layer and close
+        // popups; the trainer has no use for Alt, so it never reaches ImGui.
+        bool alt = (m == WM_SYSKEYDOWN || m == WM_SYSKEYUP || m == WM_KEYDOWN || m == WM_KEYUP) &&
+                   (w == VK_MENU || w == VK_LMENU || w == VK_RMENU);
+        if (alt) return 0;
         {
             std::lock_guard<std::mutex> lk(g_qMu);
             if (g_queue.size() < 4096) g_queue.push_back({h, m, w, l});

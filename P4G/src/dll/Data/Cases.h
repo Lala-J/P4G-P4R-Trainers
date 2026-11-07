@@ -17,8 +17,8 @@ struct CaseInfo {
 };
 
 inline constexpr CaseInfo kCases[] = {
-    // Yukiko: flag 35 from a before/after save diff (docs/data/case_flags.md). 17 also changed.
-    {"Yukiko Amagi", "Yukiko's Castle", 17, 28, true, 35, false},   // 4/18 .. 4/29
+    // Yukiko: flag 35, watched turning on as the rescue sequence ends (docs/data/case_flags.md).
+    {"Yukiko Amagi", "Yukiko's Castle", 17, 28, true, 35, true},   // 4/18 .. 4/29
     {"Kanji Tatsumi", "Steamy Bathhouse", 48, 64, true, -1, false},  // 5/19 .. 6/4
     {"Rise Kujikawa", "Marukyu Striptease", 85, 99, true, -1, false},  // 6/25 .. 7/9
     {"Mitsuo Kubo", "Void Quest", 119, 133, true, -1, false},        // 7/29 .. 8/12

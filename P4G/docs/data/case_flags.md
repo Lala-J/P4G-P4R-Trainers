@@ -11,7 +11,7 @@ solved: missing a deadline ends the game. This needs no flags and is always righ
 
 | Case | Flag | Status | Evidence |
 |---|---|---|---|
-| Yukiko | 35 | candidate | save diff below |
+| Yukiko | 35 | **verified** | watched live, see below |
 | others | — | not yet identified | — |
 
 ### Yukiko: before/after save diff
@@ -31,6 +31,16 @@ Among those flags:
 - That makes **35** the likely Yukiko flag. **17** is the alternative.
 - The others change with the day or with dungeon progress.
 
-**To verify:**
-- Watch the flags live while beating Shadow Yukiko from the pre-boss save.
-- Mine the scheduler scripts for the check the 4/29 deadline makes.
+### Yukiko: live confirmation
+
+The trainer's trace monitor logged every flag change while replaying the pre-boss save through the
+fight. The order of events:
+
+| When | Flag change | Meaning |
+|---|---|---|
+| Opening the boss door | 17 on, 190 off | The pre-fight cutscene. **17 means "boss reached", not "rescued".** |
+| During the fight | 5568–5585 on | The boss's battle script, step by step (summons, phase changes). |
+| End of the rescue cutscene | **35 on**, 3701 on | **Yukiko rescued.** |
+
+Flag 35 never turns on without the rescue, and it is set once that sequence ends, so it's the
+flag the Case File uses.

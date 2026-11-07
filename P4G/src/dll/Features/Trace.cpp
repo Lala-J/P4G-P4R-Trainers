@@ -1,0 +1,123 @@
+#include "Features/Trace.h"
+
+#include <windows.h>
+#include <intrin.h>
+#include <cstdint>
+#include <cstring>
+
+#include "Engine/Addresses.h"
+#include "Engine/GameTypes.h"
+#include "Engine/HostCheck.h"
+#include "Engine/SigScan.h"
+#include "Hooks/Hook.h"
+#include "Util/Log.h"
+#include "Util/Paths.h"
+
+namespace Trace {
+
+namespace {
+
+bool g_on = false;
+uint8_t g_prevFlags[Game::kFlagBytes];
+uint32_t g_prevCounters[Game::kCounters];
+bool g_havePrev = false;
+int g_changes[Game::kCounters] = {};  // counters that change constantly (timers) get muted
+uintptr_t g_prevBattle = 0;
+int g_budget = 0;  // log lines left this battle for the resolver hooks
+
+using Aff_t = uint32_t (*)(void*, short);
+using Known_t = uint64_t (*)(uint16_t, uint16_t);
+Aff_t o_Aff = nullptr;
+Known_t o_Known = nullptr;
+
+uint32_t Aff_Hook(void* unit, short element) {
+    Hooks::Guard g;
+    uint32_t r = o_Aff(unit, element);
+    if (g_budget > 0) {
+        --g_budget;
+        LOGI("trace: GetAffinityResult(unit %p, elem %d) = 0x%08X  from 0x%llX", unit, element, r,
+             (unsigned long long)_ReturnAddress());
+    }
+    return r;
+}
+
+uint64_t Known_Hook(uint16_t enemy, uint16_t element) {
+    Hooks::Guard g;
+    uint64_t r = o_Known(enemy, element);
+    if (g_budget > 0) {
+        --g_budget;
+        LOGI("trace: GetAffinityKnown(enemy %u, elem %u) = %llu", enemy, element, (unsigned long long)r);
+    }
+    return r;
+}
+
+uintptr_t Ptr(uintptr_t a) {
+    return Sig::Readable(a, 8) ? *reinterpret_cast<const uintptr_t*>(a) : 0;
+}
+
+void DumpBattle(uintptr_t bm) {
+    LOGI("trace: battle start, manager %p", (void*)bm);
+    for (int side = 0; side < 2; ++side) {
+        uintptr_t n = Ptr(bm + (side ? 0x1D8 : 0x1D0));
+        for (int i = 0; n && i < 12; ++i) {
+            uintptr_t unit = Ptr(n + 0xCF0);
+            uint16_t id = Sig::Readable(unit, 4) ? *reinterpret_cast<const uint16_t*>(unit + 2) : 0;
+            uint16_t hp = Sig::Readable(unit, 0x10) ? *reinterpret_cast<const uint16_t*>(unit + 8) : 0;
+            uint32_t flags = Sig::Readable(n + 0x9C, 4) ? *reinterpret_cast<const uint32_t*>(n + 0x9C) : 0;
+            LOGI("trace:   %s node %p unit %p id %u hp %u nodeflags 0x%X", side ? "enemy" : "party",
+                 (void*)n, (void*)unit, id, hp, flags);
+            n = Ptr(n + 0xD00);
+        }
+    }
+}
+
+}  // namespace
+
+bool Enabled() { return g_on; }
+
+bool InstallHooks() {
+    g_on = GetFileAttributesW((Paths::DataDir() + L"\\debug-trace").c_str()) != INVALID_FILE_ATTRIBUTES;
+    if (!g_on || !HostCheck::Get().supported) return false;
+    LOGI("trace: enabled");
+    Hooks::Create("trace GetAffinityResult", reinterpret_cast<void*>(0x1400D35B0), &Aff_Hook, &o_Aff);
+    Hooks::Create("trace GetAffinityKnown", reinterpret_cast<void*>(0x1400993F0), &Known_Hook, &o_Known);
+    return true;
+}
+
+void Tick() {
+    if (!g_on || !HostCheck::GroupOk("core")) return;
+    const auto* flags = reinterpret_cast<const uint8_t*>(Addr::SaveBlock + Game::Off::Flags);
+    const auto* counters = reinterpret_cast<const uint32_t*>(Addr::SaveBlock + Game::Off::Counters);
+    if (g_havePrev) {
+        int lines = 0;
+        for (int b = 0; b < Game::kFlagBytes && lines < 40; ++b) {
+            uint8_t d = flags[b] ^ g_prevFlags[b];
+            for (int bit = 0; d && bit < 8; ++bit, d >>= 1)
+                if (d & 1) {
+                    int n = b * 8 + bit;
+                    LOGI("trace: flag %d %s", n, (flags[b] >> bit) & 1 ? "ON" : "off");
+                    ++lines;
+                }
+        }
+        for (int i = 0; i < Game::kCounters && lines < 60; ++i)
+            if (counters[i] != g_prevCounters[i] && ++g_changes[i] <= 20) {
+                LOGI("trace: counter %d %u -> %u%s", i, g_prevCounters[i], counters[i],
+                     g_changes[i] == 20 ? " (changes constantly; muted)" : "");
+                ++lines;
+            }
+    }
+    std::memcpy(g_prevFlags, flags, sizeof g_prevFlags);
+    std::memcpy(g_prevCounters, counters, sizeof g_prevCounters);
+    g_havePrev = true;
+
+    uintptr_t bm = Ptr(Addr::pBattleMgr);
+    if (bm && !g_prevBattle) {
+        g_budget = 400;
+        DumpBattle(bm);
+    } else if (!bm && g_prevBattle) {
+        LOGI("trace: battle end");
+    }
+    g_prevBattle = bm;
+}
+
+}  // namespace Trace

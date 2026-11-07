@@ -4,6 +4,7 @@
 #include "Engine/SaveBackup.h"
 #include "Features/Battle.h"
 #include "Features/Inventory.h"
+#include "Features/Trace.h"
 #include "Hooks/D3D11Hook.h"
 #include "Hooks/Hook.h"
 #include "Hooks/InputHooks.h"
@@ -42,6 +43,7 @@ DWORD WINAPI MainThread(LPVOID) {
         if (hc.supported) {
             Battle::InstallHooks();
             InventoryFx::InstallHooks();
+            Trace::InstallHooks();
         }
         g_hooks = d3d && Hooks::EnableAll();
         LOGI("hooks: d3d %s, input %s, %d total", d3d ? "ok" : "FAILED", in ? "ok" : "partial",

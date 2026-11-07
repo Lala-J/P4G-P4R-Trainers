@@ -8,6 +8,7 @@
 #include <atomic>
 
 #include "Engine/GameThread.h"
+#include "Features/Trace.h"
 #include "Hooks/InputHooks.h"
 #include "UI/Shell.h"
 #include "UI/Theme.h"
@@ -151,6 +152,7 @@ void OnPresent(IDXGISwapChain* sc) {
     // Queued game changes apply here, at the top of the frame, on the game's main thread.
     GameThread::BindToCurrent();
     GameThread::Drain();
+    Trace::Tick();
     if (!g_ready && (g_initFailed || !Init(sc))) return;
 
     if ((++g_frame % 120) == 0) Input::PollLateModules();

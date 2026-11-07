@@ -89,6 +89,33 @@ void BattlePage() {
                       "Restores HP and SP to their maximums, the way the game's own full heal does."))
         GameThread::Post([] { Battle::RefillNow(); });
 
+    // Values above the game's own maximum are usually left behind by another cheat tool.
+    {
+        bool over = false;
+        auto* units = reinterpret_cast<const Game::Unit*>(Addr::SaveBlock + Game::Off::Units);
+        for (int c = 0; c < Game::kUnits; ++c) {
+            uint16_t mh = Natives::GetMaxHP(&units[c]), ms = Natives::GetMaxSP(&units[c]);
+            if ((mh && units[c].hp > mh) || (ms && units[c].sp > ms)) over = true;
+        }
+        if (over) {
+            ImGui::Spacing();
+            W::Chip("ABOVE MAXIMUM", C::Orange);
+            ImGui::SameLine();
+            ImGui::TextWrapped("Some HP / SP values are higher than the game allows (often left by another "
+                               "cheat tool). The game clamps them the next time they change.");
+            if (W::RiskButton("Bring them back to the game's maximum", Risk::Safe,
+                              "Runs the game's own HP/SP update with no change, which clamps each value "
+                              "to its real maximum."))
+                GameThread::Post([] {
+                    auto* u = reinterpret_cast<Game::Unit*>(Addr::SaveBlock + Game::Off::Units);
+                    for (int c = 0; c < Game::kUnits; ++c) {
+                        Natives::AddHP(&u[c], 0);
+                        Natives::AddSP(&u[c], 0);
+                    }
+                });
+        }
+    }
+
     SectionHeader("PARTY");
     const auto& s = Game::Current();
     float sc = Overlay::Scale();

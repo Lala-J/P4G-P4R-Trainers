@@ -4,6 +4,7 @@
 
 #include "Engine/GameState.h"
 #include "Engine/Names.h"
+#include "Features/Edits.h"
 #include "Features/Spoilers.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -76,6 +77,109 @@ void DrawPersona(const char* id, const Game::Persona& p, float w, bool equipped,
     W::EndCard();
 }
 
+int g_edit = -1;          // stock slot being edited
+int g_stats[5] = {};
+int g_statsFor = -1;
+int g_skillSlot = -1;     // skill slot whose picker is open
+char g_skillFilter[32] = "";
+
+bool Contains(const std::string& hay, const char* needle) {
+    if (!*needle) return true;
+    std::string a = hay, b = needle;
+    for (auto& c : a) c = (char)tolower((unsigned char)c);
+    for (auto& c : b) c = (char)tolower((unsigned char)c);
+    return a.find(b) != std::string::npos;
+}
+
+void DrawEditor(const Game::Snapshot& s) {
+    float sc = Overlay::Scale();
+    SectionHeader("EDIT A PERSONA");
+    // Pick a Persona: one button each (no popups, so it works the same with a pad).
+    int shown = 0;
+    for (int i = 0; i < Game::kStock; ++i) {
+        if (!s.stock[i].valid) continue;
+        if (shown++) ImGui::SameLine();
+        ImGui::PushID(i);
+        bool sel = g_edit == i;
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(C::Yellow));
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(C::Black));
+        if (ImGui::Button(Names::PersonaOr(s.stock[i].id).c_str())) {
+            g_edit = i;
+            g_skillSlot = -1;
+        }
+        if (sel) ImGui::PopStyleColor(2);
+        ImGui::PopID();
+    }
+    if (g_edit < 0 || !s.stock[g_edit].valid) {
+        W::Dim("Pick one of Yu's Personas to change its stats or skills.");
+        return;
+    }
+    const auto& p = s.stock[g_edit];
+    if (g_statsFor != g_edit) {
+        for (int i = 0; i < 5; ++i) g_stats[i] = p.stats[i];
+        g_statsFor = g_edit;
+    }
+    static const char* stat[] = {"St", "Ma", "En", "Ag", "Lu"};
+    for (int i = 0; i < 5; ++i) {
+        ImGui::SetNextItemWidth(220 * sc);
+        ImGui::SliderInt(stat[i], &g_stats[i], 1, 99);
+        if (i % 2 == 0 && i < 4) ImGui::SameLine(300 * sc);
+    }
+    if (ImGui::Button("Max all to 99")) for (int& v : g_stats) v = 99;
+    ImGui::SameLine();
+    if (W::RiskButton("Apply stats", Risk::Caution,
+                      "Sets the Persona's base stats (the displayed stat also adds incense and level-up "
+                      "growth, capped at 99). Its level doesn't change.")) {
+        for (int i = 0; i < 5; ++i)
+            if (g_stats[i] != p.stats[i]) Edits::SetPersonaStat(g_edit, i, (uint8_t)g_stats[i]);
+    }
+
+    ImGui::Spacing();
+    W::Title("Skills");
+    for (int k = 0; k < 8; ++k) {
+        ImGui::PushID(k);
+        uint16_t sk = p.skills[k];
+        char label[64];
+        snprintf(label, sizeof label, "%d. %s", k + 1, sk ? Names::SkillOr(sk).c_str() : "(empty)");
+        bool open = g_skillSlot == k;
+        if (open) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(C::YellowDim));
+        if (ImGui::Button(label, ImVec2(260 * sc, 0))) g_skillSlot = open ? -1 : k;
+        if (open) ImGui::PopStyleColor();
+        ImGui::PopID();
+        if (k % 2 == 0) ImGui::SameLine(300 * sc);
+    }
+    if (g_skillSlot >= 0) {
+        int k = g_skillSlot;
+        ImGui::Spacing();
+        W::Dim("Choose a skill for slot %d:", k + 1);
+        ImGui::SetNextItemWidth(240 * sc);
+        ImGui::InputTextWithHint("##skf", "Filter", g_skillFilter, sizeof g_skillFilter);
+        ImGui::SameLine();
+        if (ImGui::Button("Clear slot")) {
+            Edits::SetPersonaSkill(g_edit, k, 0);
+            g_skillSlot = -1;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Close")) g_skillSlot = -1;
+        ImGui::BeginChild("skills", ImVec2(0, 220 * sc), ImGuiChildFlags_Borders);
+        int cols = W::Columns(220 * sc), n = 0;
+        for (int id = 1; id < 624 && g_skillSlot >= 0; ++id) {
+            std::string nm = Names::Skill((uint16_t)id);
+            if (nm.empty() || !Contains(nm, g_skillFilter)) continue;
+            if (n++ % cols) ImGui::SameLine();
+            ImGui::PushID(id);
+            if (ImGui::Selectable(nm.c_str(), p.skills[k] == id, 0, ImVec2(200 * sc, 0))) {
+                Edits::SetPersonaSkill(g_edit, k, (uint16_t)id);
+                g_skillSlot = -1;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
+    W::Dim("Skill changes take effect immediately. Some skills are enemy-only or unique to one "
+           "Persona and may behave oddly on another.");
+}
+
 }  // namespace
 
 namespace Pages {
@@ -102,6 +206,8 @@ void Personas() {
         DrawPersona(id, p, w, i == s.equippedSlot, nullptr);
         ++n;
     }
+
+    DrawEditor(s);
 
     SectionHeader("PARTY MEMBERS");
     W::Dim("A party member's level is their Persona's level.");

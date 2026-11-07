@@ -8,6 +8,7 @@
 #include "Engine/HostCheck.h"
 #include "Engine/Natives.h"
 #include "Hooks/Hook.h"
+#include "Features/Trace.h"
 #include "Hooks/InputHooks.h"
 #include "Util/Log.h"
 #include "Util/Settings.h"
@@ -38,7 +39,7 @@ void SetItem_Hook(uint16_t id, uint8_t count) {
     Hooks::Guard g;
     auto ret = reinterpret_cast<uintptr_t>(_ReturnAddress());
     uint8_t old = id < Game::kItems ? reinterpret_cast<const uint8_t*>(Addr::SaveBlock + Game::Off::Items)[id] : 0;
-    if (Input::g_debug)
+    if (Input::g_debug || Trace::Enabled())
         LOGI("items: SetItemCount(0x%03X, %u) was %u, called from 0x%llX", id, count, old,
              (unsigned long long)(ret - 5));
     if (g_never && count < old && IsUseSite(ret)) return;  // the item isn't used up

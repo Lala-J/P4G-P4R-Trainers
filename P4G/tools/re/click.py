@@ -31,12 +31,12 @@ def main():
     pt = wt.POINT(x, y)
     user32.ClientToScreen(h, ctypes.byref(pt))
     user32.SetCursorPos(pt.x, pt.y)
-    time.sleep(0.08)
+    time.sleep(0.25)  # let the UI see the hover before the press
     down, up = ((MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP) if "--right" in sys.argv
                 else (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP))
     for _ in range(2 if "--double" in sys.argv else 1):
         user32.mouse_event(down, 0, 0, 0, 0)
-        time.sleep(0.05)
+        time.sleep(0.1)
         user32.mouse_event(up, 0, 0, 0, 0)
         time.sleep(0.08)
     return 0
