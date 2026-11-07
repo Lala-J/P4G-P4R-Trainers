@@ -1,0 +1,26 @@
+# Deletion bin: files are moved here instead of being deleted. Never committed.
+.trash/
+
+# Build output
+build/
+dist/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
+
+# Third-party sources, fetched at pinned commits by P4G/tools/fetch_deps.sh
+third_party/
+
+# Anything derived from the game's own files (scripts, textures, tables). Never committed.
+cache/
+
+# Logs, Python, editors
+*.log
+__pycache__/
+*.pyc
+.vs/
+.vscode/
+*.user

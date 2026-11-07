@@ -1,0 +1,7 @@
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+.githooks/* text eol=lf
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.inc text eol=crlf

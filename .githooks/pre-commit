@@ -1,0 +1,4 @@
+#!/bin/sh
+# Opt-in hook: git config core.hooksPath .githooks
+# Blocks commits that would publish local paths, account ids, emails, keys or game assets.
+exec python -I "$(git rev-parse --show-toplevel)/tools/check_public.py" --staged
