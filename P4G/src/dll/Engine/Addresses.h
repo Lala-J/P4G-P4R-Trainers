@@ -88,8 +88,18 @@ constexpr uintptr_t CalculateGainedExp = 0x140100F50;      // [MOD:p4g64.expShar
 constexpr uintptr_t GivePartyMembersExp = 0x140101AD0;     // [MOD:p4g64.expShare][DRV]
 // --- Dialogue ---------------------------------------------------------------------------------
 constexpr uintptr_t DrawDialog = 0x140461880;    // MsgWindow::DrawDialog(info)  [MOD:p4g64.accessibility][DRV]
-constexpr uintptr_t CriSetCueId = 0x140611E4C;   // criAtomExPlayer_SetCueId     [MOD:Ryo][DRV]
-constexpr uintptr_t CriGetStatus = 0x140610668;  // criAtomExPlayer_GetStatus    [MOD:Ryo][DRV]
+// CRI keeps every player on one of two lists, {tail, head, count}: idle players on the first,
+// and while a player has a sound going it moves to the second (and back when the sound ends).
+// Links inside each player: +0x08 toward the head, +0x10 toward the tail, +0x18 back-pointer to
+// the list it is on. Also +0x20 status (0 stopped, 1 preparing, 2 playing, 3 ended; a streamed
+// voice can stay at 1 while it plays), +0x88 the current cue, +0x1C8 ms played of it.
+// criAtomExPlayer_Create links new players in at 0x14060F5AD; starting a sound moves the
+// player to the active list at 0x14061593A.
+constexpr uintptr_t CriPlayerList = 0x140BEAA58;    // idle players  [DRV]
+constexpr uintptr_t CriActivePlayers = 0x140BEAA70; // players with a sound going  [DRV]
+// --- Game-side input (docs/data/input.md) -----------------------------------------------------
+constexpr uintptr_t CtrlRead = 0x1404C1E70;   // int (?, SceCtrlData* out): all devices merged, Vita layout [DRV]
+constexpr uintptr_t PadUpdate = 0x140505D50;  // the game's per-frame pad update, CtrlRead's only caller [DRV]
 // --- Items & equipment (docs/data/items.md) --------------------------------------------------
 constexpr uintptr_t pItemTable = 0x1411A5940;   // -> item[id] x 0x44: +0 kind, +8 atk, +A hit, +10 def, +12 eva, +30 wielders [DRV]
 constexpr uintptr_t CanEquip = 0x1401A0220;     // int (i16 item, i16 charId): bit (charId+4) of +30 [DRV]
@@ -183,10 +193,12 @@ inline constexpr Probe kProbes[] = {
      "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8D B3 9A 06 00 00", 0},
     {"MsgWindow::DrawDialog", "dialogue", ProbeKind::Code, DrawDialog,
      "48 89 5C 24 10 48 89 6C 24 18 57 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B7 05", 0},
-    {"criAtomExPlayer_SetCueId", "dialogue", ProbeKind::Code, CriSetCueId,
-     "48 8B C4 48 89 58 ?? 48 89 68 ?? 48 89 70 ?? 48 89 78 ?? 41 54 41 56 41 57 48 81 EC 80 00 00 00 4D 63 F0", 0},
-    {"criAtomExPlayer_GetStatus", "dialogue", ProbeKind::Code, CriGetStatus,
-     "48 89 5C 24 ?? 57 48 83 EC 20 48 8B F9 48 85 C9 75 ?? 44 8D 41 ?? 48 8D 15 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8D 47", 0},
+    // criAtomExPlayer_Create linking a new player in: cmp [head],r13 / mov [tail],r15 / ...
+    {"CRI player list", "dialogue", ProbeKind::Code, 0x14060F5AD,
+     "4C 39 2D AC B4 5D 00 75 09 4C 89 3D 9B B4 5D 00 EB 1A 4D 89 6F 08 48 8B 05 96 B4 5D 00 49 89 47 10", 0},
+    // Moving a player onto the active list: mov [rsi+18h],r13 / cmp [head],0 / ...
+    {"CRI active players", "dialogue", ProbeKind::Code, 0x14061593A,
+     "4C 89 6E 18 48 83 3D 32 51 5D 00 00 75 09 48 89 35 21 51 5D 00 EB 1B 48 83 66 08 00 48 8B 05 1B 51 5D 00 48 89 46 10", 0},
     {"Enemy affinity table use", "intel", ProbeKind::Code, 0x1400D363E,
      "48 8B 05 2B D3 DE 00 0F B7 14 48", 0},
     {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,
@@ -213,6 +225,10 @@ inline constexpr Probe kProbes[] = {
      "48 89 5C 24 08 57 48 83 EC 20 0F B7 D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 44 8B 15 ?? ?? ?? ?? 45 33 C9 BF 01 00 00 00", 0},
     {"Field collision step", "fieldguard", ProbeKind::Code, FieldCollisionStep,
      "48 8B C4 48 89 58 08 55 56 57 41 56 41 57 48 8D 68 B1 48 81 EC C0 00 00 00 0F 29 70 C8 48 8B F1", 0},
+    // CtrlRead: prologue, the controller-system update call and the merged pad-state load.
+    {"Controller read", "gameinput", ProbeKind::Code, CtrlRead,
+     "48 89 5C 24 10 57 48 83 EC 60 48 8D 0D ?? ?? ?? ?? 48 8B DA E8 ?? ?? ?? ?? E8 92 78 FE FF 0F 10 05 B3 64 D8 04", 0},
+    {"Pad update's read", "gameinput", ProbeKind::Code, PadUpdate + 0x16, "48 8D 54 24 20 E8 00 C1 FB FF 33 FF 85 C0", 0},
     {"Minimap reveal-cell", "minimap", ProbeKind::Code, MinimapRevealCell,
      "48 89 5C 24 10 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 30 0F B6 D9 48 8D 0D ?? ?? ?? ?? 0F B6 FA", 0},
     {"Minimap seen-bits use", "minimap", ProbeKind::Code, 0x14042FB28, "4C 8B 0D 51 CA DB 04 48 8D 4B F0", 0},

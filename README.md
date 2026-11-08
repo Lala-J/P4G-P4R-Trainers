@@ -42,9 +42,11 @@ in game.
 In game, press **Insert**, or **Back + R3** on a controller, to open or close the trainer. Both
 can be changed on the Settings page (keys the game itself uses are never offered).
 
-While the trainer is open the game receives no input. Inside the trainer, **LB / RB** (or
-Page Up / Page Down) switch pages, and **Esc** or **Start** closes it. Mouse, keyboard and
-controller all work everywhere.
+While the trainer is open the game receives no input at all: no keys, clicks, mouse movement
+or controller buttons reach it, and anything still held when you close the trainer stays
+hidden from the game until you let go. Inside the trainer, **LB / RB** (or Page Up / Page Down)
+switch pages, and **Esc** or **Start** closes it. Mouse, keyboard and controller all work
+everywhere.
 
 Good to know:
 
@@ -52,7 +54,11 @@ Good to know:
   shortcuts, floor changes) only run while you're free-roaming. Otherwise the button says why
   not, e.g. "Not during a battle".
 - Dialogue auto-advance only ever presses Confirm in the conversation box, never on a choice,
-  menu or pop-up. Holding any key pauses it.
+  menu, tutorial or pop-up. Voiced lines play to the end first (then 1.5 s); unvoiced lines
+  wait 2.8 s. Press **A** during a conversation to turn it on or off (the key can be changed
+  on the Field & Dungeon page; everywhere else A still does what the game uses it for). While
+  it's on, *Autoplay On* shows above the conversation box. Holding any key pauses it, and it
+  waits while the trainer is open.
 - Toggles (battle overrides, never-run-out items, minimap reveal, auto-advance, EXP options)
   are remembered between sessions in `%LOCALAPPDATA%\P4GTrainer\settings.ini`.
 

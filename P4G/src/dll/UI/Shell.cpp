@@ -2,11 +2,13 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <cmath>
 #include <cstdio>
 
 #include "Data/Cases.h"
 #include "Engine/Calendar.h"
 #include "Engine/GameState.h"
+#include "Features/AutoAdvance.h"
 #include "Features/CaseFile.h"
 #include "Features/EnemyIntel.h"
 #include "Hooks/InputHooks.h"
@@ -180,14 +182,79 @@ bool s_justOpened = false;
 
 namespace Shell {
 
-bool WantsHud() { return Intel::ShowHud() && Game::Current().inBattle; }
+bool WantsHud() { return (Intel::ShowHud() && Game::Current().inBattle) || AutoAdvance::IndicatorAlpha() > 0; }
 
 void NotifyOpened() { s_justOpened = true; }
+
+namespace {
+
+// Leans everything drawn since vertex `from` to the right, pivoting on the line y = baseY.
+void Lean(ImDrawList* dl, int from, float baseY, float k) {
+    for (int i = from; i < dl->VtxBuffer.Size; ++i) dl->VtxBuffer[i].pos.x += (baseY - dl->VtxBuffer[i].pos.y) * k;
+}
+
+ImU32 WithAlpha(ImU32 c, float a) {
+    int al = int(((c >> IM_COL32_A_SHIFT) & 0xFF) * (a < 0 ? 0 : (a > 1 ? 1 : a)));
+    return (c & ~IM_COL32_A_MASK) | (ImU32(al) << IM_COL32_A_SHIFT);
+}
+
+// "Autoplay On", above the right end of the game's conversation box: a slanted black tab with a
+// yellow edge, three arrows pulsing left to right, and the words leaning forward. Laid out in
+// the game's 1920x1080 coordinates (the box's top edge runs at about y = 800 there) and scaled.
+void AutoplayBadge(float alpha) {
+    ImGuiIO& io = ImGui::GetIO();
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    float s = io.DisplaySize.y / 1080.0f;
+    float ox = (io.DisplaySize.x - 1920.0f * s) * 0.5f;  // the game keeps 16:9, centred
+    auto X = [&](float x) { return ox + x * s; };
+    auto Y = [&](float y) { return y * s; };
+
+    ImFont* font = g_fonts.title ? g_fonts.title : ImGui::GetFont();
+    float fs = 25.0f * s;
+    const char* word = "Autoplay ";
+    const char* on = "On";
+    float wWord = font->CalcTextSizeA(fs, FLT_MAX, 0, word).x;
+    float wOn = font->CalcTextSizeA(fs, FLT_MAX, 0, on).x;
+
+    float slide = (1.0f - alpha) * 24.0f * s;  // slides in from the right as it fades in
+    float right = X(1858) + slide, top = Y(746), bottom = Y(786);
+    float slant = 12.0f * s;
+    float arrowsW = 50.0f * s, gap = 12.0f * s, padL = 18.0f * s, padR = 18.0f * s;
+    float left = right - (padL + arrowsW + gap + wWord + wOn + padR);
+
+    // Tab and its yellow edge.
+    dl->AddQuadFilled(ImVec2(left + slant, top), ImVec2(right + slant, top), ImVec2(right, bottom),
+                      ImVec2(left, bottom), WithAlpha(IM_COL32(10, 10, 10, 220), alpha));
+    dl->AddQuadFilled(ImVec2(left + slant - 7 * s, top), ImVec2(left + slant - 1 * s, top),
+                      ImVec2(left - 1 * s, bottom), ImVec2(left - 7 * s, bottom), WithAlpha(C::Yellow, alpha));
+
+    // Arrows: each brightens in turn, a wave running toward the text.
+    float t = float(ImGui::GetTime());
+    float cy = (top + bottom) * 0.5f, ah = 8.0f * s, aw = 11.0f * s;
+    for (int i = 0; i < 3; ++i) {
+        float wave = 0.5f + 0.5f * cosf(6.2831853f * (t / 1.2f - i / 3.0f));
+        float a = alpha * (0.2f + 0.8f * wave);
+        float x = left + padL + i * 17.0f * s;
+        int v0 = dl->VtxBuffer.Size;
+        dl->AddTriangleFilled(ImVec2(x, cy - ah), ImVec2(x + aw, cy), ImVec2(x, cy + ah), WithAlpha(C::Yellow, a));
+        Lean(dl, v0, bottom, 0.22f);
+    }
+
+    // Words.
+    float tx = left + padL + arrowsW + gap, ty = cy - fs * 0.56f;
+    int v0 = dl->VtxBuffer.Size;
+    dl->AddText(font, fs, ImVec2(tx, ty), WithAlpha(C::White, alpha), word);
+    dl->AddText(font, fs, ImVec2(tx + wWord, ty), WithAlpha(C::Yellow, alpha), on);
+    Lean(dl, v0, ty + fs, 0.22f);
+}
+
+}  // namespace
 
 void Draw(bool open) {
     Game::Capture();
     if (!open) {
         if (Intel::ShowHud()) Pages::IntelHud();
+        if (float a = AutoAdvance::IndicatorAlpha(); a > 0) AutoplayBadge(a);
         return;
     }
     if (s_justOpened) {

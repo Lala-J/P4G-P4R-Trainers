@@ -10,6 +10,12 @@
 #include <mutex>
 #include <vector>
 
+#include <intrin.h>
+#include <cstddef>
+#include <cstdio>
+
+#include "Engine/Addresses.h"
+#include "Engine/HostCheck.h"
 #include "Hooks/Hook.h"
 #include "UI/Overlay.h"
 #include "Util/Log.h"
@@ -25,18 +31,34 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM,
 namespace {
 
 // ---------------------------------------------------------------- DirectInput8
+// The Steam overlay wraps every DirectInput device the process creates, with a separate
+// wrapper class (and so separate GetDeviceState / GetDeviceData functions) per device type.
+// Each distinct pair gets its own hook slot: keyboard, mouse and, if one is plugged in at
+// load time, a game controller. Without the overlay all devices share one pair.
 using GetDeviceState_t = HRESULT(STDMETHODCALLTYPE*)(IDirectInputDevice8W*, DWORD, LPVOID);
 using GetDeviceData_t = HRESULT(STDMETHODCALLTYPE*)(IDirectInputDevice8W*, DWORD,
                                                      LPDIDEVICEOBJECTDATA, LPDWORD, DWORD);
-GetDeviceState_t o_GetDeviceState = nullptr;
-GetDeviceData_t o_GetDeviceData = nullptr;
+struct DiSlot {
+    void* stateFn = nullptr;
+    void* dataFn = nullptr;
+    GetDeviceState_t o_state = nullptr;
+    GetDeviceData_t o_data = nullptr;
+};
+DiSlot g_di[3];
 
 std::mutex g_diMu;
 uint8_t g_kbLatch[256] = {};                 // keys pressed while open, held since
+uint8_t g_mouseLatch[8] = {};                // mouse buttons pressed while open, held since
 std::map<void*, DIJOYSTATE2> g_joyRest;      // last joystick state before opening
 std::map<void*, bool> g_isKeyboard;          // device type cache
 std::atomic<int> g_injectPolls{0};           // polls left with Confirm held
 uint8_t g_confirmDik = 0;
+// Auto-advance's on/off key. While a dialogue page is showing ("live") the trainer takes it: a
+// press is counted and the key is hidden from the game until released.
+std::atomic<int> g_aaDik{0};
+std::atomic<bool> g_aaLive{false};
+std::atomic<int> g_aaPresses{0};
+bool g_aaPrevDown = false;
 
 // The game's own binding for Confirm (P4G.ini [ActionConfig] Action04: "1-<DIK>" entries).
 uint8_t ConfirmDik() {
@@ -72,9 +94,7 @@ bool IsKeyboard(IDirectInputDevice8W* dev) {
     return kb;
 }
 
-HRESULT STDMETHODCALLTYPE GetDeviceState_Hook(IDirectInputDevice8W* self, DWORD cb, LPVOID data) {
-    Hooks::Guard g;
-    HRESULT hr = o_GetDeviceState(self, cb, data);
+HRESULT FilterState(IDirectInputDevice8W* self, DWORD cb, LPVOID data, HRESULT hr) {
     if (FAILED(hr) || !data) return hr;
     bool open = Overlay::IsOpen();
 
@@ -94,6 +114,14 @@ HRESULT STDMETHODCALLTYPE GetDeviceState_Hook(IDirectInputDevice8W* self, DWORD 
                     prev[i] = k[i];
                 }
         }
+        if (int aa = g_aaDik.load(); aa > 0 && aa < 256) {
+            bool down = (k[aa] & 0x80) != 0;
+            if (!open && down && !g_aaPrevDown && g_aaLive.load() && !g_kbLatch[aa]) {
+                g_kbLatch[aa] = 1;  // hidden from the game (below) until it is released
+                ++g_aaPresses;
+            }
+            g_aaPrevDown = down;
+        }
         for (int i = 0; i < 256; ++i) {
             bool down = (k[i] & 0x80) != 0;
             if (open) {
@@ -105,6 +133,21 @@ HRESULT STDMETHODCALLTYPE GetDeviceState_Hook(IDirectInputDevice8W* self, DWORD 
             }
         }
     } else if (cb == sizeof(DIMOUSESTATE) || cb == sizeof(DIMOUSESTATE2)) {
+        // The game turns a left click into Confirm and clicks whatever its menu has under the
+        // cursor, so a click on the trainer must never reach it, including one still held
+        // when the trainer closes.
+        std::lock_guard<std::mutex> lk(g_diMu);
+        auto* btn = static_cast<uint8_t*>(data) + offsetof(DIMOUSESTATE, rgbButtons);
+        DWORD n = cb - DWORD(offsetof(DIMOUSESTATE, rgbButtons));
+        for (DWORD i = 0; i < n && i < 8; ++i) {
+            bool down = (btn[i] & 0x80) != 0;
+            if (open) {
+                if (down) g_mouseLatch[i] = 1;
+            } else if (g_mouseLatch[i]) {
+                if (down) btn[i] = 0;
+                else g_mouseLatch[i] = 0;
+            }
+        }
         if (open) std::memset(data, 0, cb);
     } else if (cb == sizeof(DIJOYSTATE) || cb == sizeof(DIJOYSTATE2)) {
         std::lock_guard<std::mutex> lk(g_diMu);
@@ -125,10 +168,8 @@ HRESULT STDMETHODCALLTYPE GetDeviceState_Hook(IDirectInputDevice8W* self, DWORD 
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE GetDeviceData_Hook(IDirectInputDevice8W* self, DWORD cbObj,
-                                             LPDIDEVICEOBJECTDATA rg, LPDWORD inout, DWORD flags) {
-    Hooks::Guard g;
-    HRESULT hr = o_GetDeviceData(self, cbObj, rg, inout, flags);
+HRESULT FilterData(IDirectInputDevice8W* self, DWORD cbObj, LPDIDEVICEOBJECTDATA rg, LPDWORD inout,
+                   DWORD flags, HRESULT hr) {
     if (Input::g_debug && SUCCEEDED(hr) && inout && *inout && rg) {
         for (DWORD i = 0; i < *inout && i < 8; ++i) {
             auto* e = reinterpret_cast<DIDEVICEOBJECTDATA*>(reinterpret_cast<uint8_t*>(rg) + i * cbObj);
@@ -154,6 +195,125 @@ HRESULT STDMETHODCALLTYPE GetDeviceData_Hook(IDirectInputDevice8W* self, DWORD c
     }
     *inout = kept;
     return hr;
+}
+
+template <int N>
+HRESULT STDMETHODCALLTYPE GetDeviceState_Hook(IDirectInputDevice8W* self, DWORD cb, LPVOID data) {
+    Hooks::Guard g;
+    return FilterState(self, cb, data, g_di[N].o_state(self, cb, data));
+}
+
+template <int N>
+HRESULT STDMETHODCALLTYPE GetDeviceData_Hook(IDirectInputDevice8W* self, DWORD cbObj,
+                                             LPDIDEVICEOBJECTDATA rg, LPDWORD inout, DWORD flags) {
+    Hooks::Guard g;
+    return FilterData(self, cbObj, rg, inout, flags, g_di[N].o_data(self, cbObj, rg, inout, flags));
+}
+
+// Hooks the GetDeviceState / GetDeviceData pair a device's vtable points at, unless another
+// slot already covers it.
+template <int N>
+bool HookDevice(IDirectInputDevice8W* dev, const char* kind) {
+    void** vt = *reinterpret_cast<void***>(dev);
+    void* st = vt[9];
+    void* dt = vt[10];
+    for (const auto& s : g_di)
+        if (s.stateFn == st && s.dataFn == dt) return true;
+    char a[80], b[80];
+    snprintf(a, sizeof a, "IDirectInputDevice8::GetDeviceState (%s)", kind);
+    snprintf(b, sizeof b, "IDirectInputDevice8::GetDeviceData (%s)", kind);
+    g_di[N].stateFn = st;
+    g_di[N].dataFn = dt;
+    bool ok = Hooks::Create(a, st, &GetDeviceState_Hook<N>, &g_di[N].o_state);
+    ok &= Hooks::Create(b, dt, &GetDeviceData_Hook<N>, &g_di[N].o_data);
+    return ok;
+}
+
+BOOL CALLBACK FirstGameController(LPCDIDEVICEINSTANCEW inst, LPVOID ref) {
+    *static_cast<GUID*>(ref) = inst->guidInstance;
+    return DIENUM_STOP;
+}
+
+// ---------------------------------------------------------------- the game's own pad read
+// P4G merges every input device into one PS Vita style pad read (SceCtrlData: u64 time,
+// u32 buttons at +8, sticks at +0xC..+0xF, 0x80 = centred): keyboard keys bound to pad
+// buttons, DirectInput pads, pads read through the Steam Input API (those never pass through
+// XInput or DirectInput in this process) and left clicks (Confirm). Neutral input here keeps
+// all of them from the game while the trainer is open.
+using CtrlRead_t = int (*)(void*, uint8_t*);
+CtrlRead_t o_CtrlRead = nullptr;
+std::atomic<uint32_t> g_ctrlHeld{0};  // buttons the player is holding, before filtering
+uint32_t g_ctrlLatch = 0;             // held since the trainer was open (game thread only)
+bool g_stickLatch = false;
+
+bool StickOffCentre(const uint8_t* s) {
+    for (int i = 0; i < 4; ++i)
+        if (s[i] < 0x40 || s[i] > 0xC0) return true;
+    return false;
+}
+
+int CtrlRead_Hook(void* ctx, uint8_t* out) {
+    Hooks::Guard g;
+    int r = o_CtrlRead(ctx, out);
+    if (r < 0 || !out) return r;
+    auto* buttons = reinterpret_cast<uint32_t*>(out + 8);
+    uint8_t* sticks = out + 12;
+    g_ctrlHeld = *buttons;
+    if (Overlay::IsOpen()) {
+        g_ctrlLatch |= *buttons;
+        g_stickLatch = true;
+        *buttons = 0;
+        std::memset(sticks, 0x80, 4);
+    } else {
+        // Buttons and sticks still held from inside the trainer stay hidden until let go, so
+        // closing it with Start / B / Esc (or holding a direction) doesn't act in the game too.
+        if (g_ctrlLatch) {
+            g_ctrlLatch &= *buttons;
+            *buttons &= ~g_ctrlLatch;
+        }
+        if (g_stickLatch) {
+            if (StickOffCentre(sticks)) std::memset(sticks, 0x80, 4);
+            else g_stickLatch = false;
+        }
+    }
+    return r;
+}
+
+// ---------------------------------------------------------------- cursor position
+// The game's menus follow the mouse (GetCursorPos, every frame), so hovering over the trainer
+// would move the selection behind it. While the trainer is open the game keeps seeing the
+// position from before it opened, and after it closes, until the mouse actually moves.
+using GetCursorPos_t = BOOL(WINAPI*)(LPPOINT);
+GetCursorPos_t o_GetCursorPos = nullptr;
+uintptr_t g_gameLo = 0, g_gameHi = 0;  // P4G.exe's image: calls from there are the game's
+std::mutex g_curMu;
+POINT g_gameCursor{};      // what the game last saw
+bool g_cursorHeld = false; // still showing it g_gameCursor
+bool g_closeSeen = false;
+POINT g_closeCursor{};     // the real position when the trainer closed
+
+BOOL WINAPI GetCursorPos_Hook(LPPOINT pt) {
+    Hooks::Guard g;
+    BOOL r = o_GetCursorPos(pt);
+    auto from = reinterpret_cast<uintptr_t>(_ReturnAddress());
+    if (!r || !pt || from < g_gameLo || from >= g_gameHi) return r;
+    std::lock_guard<std::mutex> lk(g_curMu);
+    if (Overlay::IsOpen()) {
+        if (!g_cursorHeld) {
+            g_cursorHeld = true;
+            g_closeSeen = false;
+        }
+        *pt = g_gameCursor;
+    } else if (g_cursorHeld) {
+        if (!g_closeSeen) {
+            g_closeSeen = true;
+            g_closeCursor = *pt;
+        }
+        if (pt->x == g_closeCursor.x && pt->y == g_closeCursor.y) *pt = g_gameCursor;
+        else g_cursorHeld = false;
+    }
+    if (!g_cursorHeld) g_gameCursor = *pt;
+    return r;
 }
 
 // ---------------------------------------------------------------- XInput
@@ -315,21 +475,30 @@ bool Install() {
     if (g_debug) LOGI("input: verbose logging on");
     LoadHotkeys();
 
-    // DirectInput8: borrow the method addresses from a throwaway keyboard device.
+    // DirectInput8: borrow the method addresses from throwaway devices of each type.
     if (HMODULE di = GetModuleHandleW(L"dinput8.dll")) {
         using Create_t = HRESULT(WINAPI*)(HINSTANCE, DWORD, REFIID, LPVOID*, LPUNKNOWN);
         auto create = reinterpret_cast<Create_t>(GetProcAddress(di, "DirectInput8Create"));
         IDirectInput8W* dinput = nullptr;
         if (create && SUCCEEDED(create(GetModuleHandleW(nullptr), DIRECTINPUT_VERSION,
                                        IID_IDirectInput8W, reinterpret_cast<void**>(&dinput), nullptr))) {
-            IDirectInputDevice8W* kb = nullptr;
-            if (SUCCEEDED(dinput->CreateDevice(GUID_SysKeyboard, &kb, nullptr))) {
-                void** vt = *reinterpret_cast<void***>(kb);
-                ok &= Hooks::Create("IDirectInputDevice8::GetDeviceState", vt[9], &GetDeviceState_Hook,
-                                    &o_GetDeviceState);
-                ok &= Hooks::Create("IDirectInputDevice8::GetDeviceData", vt[10], &GetDeviceData_Hook,
-                                    &o_GetDeviceData);
-                kb->Release();
+            IDirectInputDevice8W* dev = nullptr;
+            if (SUCCEEDED(dinput->CreateDevice(GUID_SysKeyboard, &dev, nullptr))) {
+                ok &= HookDevice<0>(dev, "keyboard");
+                dev->Release();
+            } else {
+                ok = false;
+            }
+            if (SUCCEEDED(dinput->CreateDevice(GUID_SysMouse, &dev, nullptr))) {
+                ok &= HookDevice<1>(dev, "mouse");
+                dev->Release();
+            }
+            GUID pad{};
+            if (SUCCEEDED(dinput->EnumDevices(DI8DEVCLASS_GAMECTRL, &FirstGameController, &pad,
+                                              DIEDFL_ATTACHEDONLY)) &&
+                pad != GUID{} && SUCCEEDED(dinput->CreateDevice(pad, &dev, nullptr))) {
+                HookDevice<2>(dev, "controller");
+                dev->Release();
             }
             dinput->Release();
         } else {
@@ -346,9 +515,26 @@ bool Install() {
                       &SetCursorPos_Hook, &o_SetCursorPos);
         Hooks::Create("ClipCursor", reinterpret_cast<void*>(GetProcAddress(u, "ClipCursor")),
                       &ClipCursor_Hook, &o_ClipCursor);
+        auto* exe = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
+        auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(exe + reinterpret_cast<IMAGE_DOS_HEADER*>(exe)->e_lfanew);
+        g_gameLo = reinterpret_cast<uintptr_t>(exe);
+        g_gameHi = g_gameLo + nt->OptionalHeader.SizeOfImage;
+        Hooks::Create("GetCursorPos", reinterpret_cast<void*>(GetProcAddress(u, "GetCursorPos")),
+                      &GetCursorPos_Hook, &o_GetCursorPos);
     }
     return ok;
 }
+
+bool InstallGameHooks() {
+    if (!HostCheck::GroupOk("gameinput")) {
+        LOGW("input: the game's pad read wasn't recognised; controllers read through Steam Input "
+             "may reach the game while the trainer is open");
+        return false;
+    }
+    return Hooks::Create("CtrlRead", reinterpret_cast<void*>(Addr::CtrlRead), &CtrlRead_Hook, &o_CtrlRead);
+}
+
+uint32_t GamePadHeld() { return g_ctrlHeld.load(); }
 
 void PollLateModules() { HookAllXMods(true); }
 
@@ -410,6 +596,7 @@ bool g_debug = false;
 void InjectConfirm() { g_injectPolls = 3; }
 
 void OnOverlayOpened() {
+    g_injectPolls = 0;  // an auto-advance press still pending must not land after closing
     if (o_ClipCursor) o_ClipCursor(nullptr);
 }
 
@@ -478,6 +665,42 @@ bool GameUsesKey(int dik) {
     ReadGameBindings();
     return dik > 0 && dik < 256 && g_bound[dik];
 }
+
+bool GameUsesKeyInDialogue(int dik) {
+    if (dik <= 0 || dik >= 256) return false;
+    static bool read = false;
+    static bool used[256] = {};
+    if (!read) {
+        read = true;
+        wchar_t path[MAX_PATH];
+        if (GetEnvironmentVariableW(L"LOCALAPPDATA", path, MAX_PATH)) {
+            std::wstring ini = std::wstring(path) + L"\\SEGA\\P4G\\P4G.ini";
+            // Up, Down (choice lists), Confirm, Cancel.
+            for (const wchar_t* action : {L"Action00", L"Action01", L"Action04", L"Action05"}) {
+                wchar_t v[128] = {};
+                GetPrivateProfileStringW(L"ActionConfig", action, L"", v, 128, ini.c_str());
+                for (wchar_t* p = v; *p; ++p)
+                    if (p[0] == L'1' && p[1] == L'-' && (p == v || p[-1] == L',')) {
+                        int d = _wtoi(p + 2);
+                        if (d > 0 && d < 256) used[d] = true;
+                    }
+            }
+        }
+        // The defaults, in case the game's settings file can't be read.
+        for (int d : {0x11, 0xC8, 0x1F, 0xD0, 0x39, 0x1C, 0x2E, 0x01}) used[d] = true;
+    }
+    return used[dik];
+}
+
+int ToggleKeyDik() {
+    for (const auto& k : kKeys)
+        if (k.vk == g_toggleVk.load()) return k.dik;
+    return 0xD2;
+}
+
+void SetAutoAdvanceKey(int dik) { g_aaDik = (dik > 0 && dik < 256) ? dik : 0; }
+void SetAutoAdvanceKeyLive(bool live) { g_aaLive = live; }
+int TakeAutoAdvanceKeyPresses() { return g_aaPresses.exchange(0); }
 
 const PadCombo* PadCombos(int* count) {
     *count = int(sizeof kCombos / sizeof kCombos[0]);

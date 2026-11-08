@@ -1,17 +1,23 @@
 #pragma once
 // Game input routing.
-//   P4G reads the keyboard through DirectInput8 and pads through XInput (loaded at run time),
-//   and clips / recentres the cursor. While the trainer is open, all of that is withheld
-//   from the game and given to the overlay instead. Keys and buttons used inside the
-//   overlay are latched so they don't leak into the game when it closes. Key releases are
-//   always passed through, so a key held when the overlay opened can never stay stuck.
+//   P4G reads the keyboard and mouse through DirectInput8, the cursor position through
+//   GetCursorPos, and pads through DirectInput8 or the Steam Input API, then merges all of
+//   it into one PS Vita style pad read. While the trainer is open, all of that is withheld
+//   from the game (at the device level and at that merged read) and given to the overlay
+//   instead. Keys, buttons and clicks used inside the overlay are latched so they don't leak
+//   into the game when it closes. Key releases are always passed through, so a key held
+//   when the overlay opened can never stay stuck.
 
 #include <windows.h>
 #include <Xinput.h>
 
+#include <cstdint>
+
 namespace Input {
 
 bool Install();                 // creates the DInput8 / XInput / cursor hooks
+bool InstallGameHooks();        // the game's merged pad read (needs the "gameinput" probes)
+uint32_t GamePadHeld();         // buttons held in the game's pad read (Vita layout), unfiltered
 void PollLateModules();         // hooks XInput DLLs the game loads later (render thread)
 bool InstallWndProc(HWND hwnd); // subclass the game window
 bool RestoreWndProc();          // false if someone subclassed after us (unload unsafe)
@@ -50,6 +56,14 @@ struct KeyOption {
 const KeyOption* ToggleKeyOptions(int* count);
 const char* ToggleKeyName();
 bool GameUsesKey(int dik);      // bound to an action in the game's own key config (P4G.ini)
+bool GameUsesKeyInDialogue(int dik);  // bound to Up, Down, Confirm or Cancel
+int ToggleKeyDik();             // the trainer's open/close key as a DirectInput scan code
+
+// Auto-advance's on/off key (DirectInput scan code, 0 = none). While "live" (a dialogue page is
+// showing and the trainer is closed) its presses are counted and kept from the game.
+void SetAutoAdvanceKey(int dik);
+void SetAutoAdvanceKeyLive(bool live);
+int TakeAutoAdvanceKeyPresses();
 
 struct PadCombo {
     WORD mask;

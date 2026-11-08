@@ -3,6 +3,7 @@
 #include "Features/AutoAdvance.h"
 #include "Features/FieldGuard.h"
 #include "Features/FieldQol.h"
+#include "Hooks/InputHooks.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
 #include "UI/Theme.h"
@@ -136,6 +137,33 @@ void FieldDungeon() {
         ImGui::SetNextItemWidth(260 * sc);
         ch |= ImGui::SliderInt("System text in the box", &o.systemDelayMs, 300, 8000, "%d ms");
         if (ch) AutoAdvance::SaveOptions();
+        ImGui::SetNextItemWidth(260 * sc);
+        if (ImGui::BeginCombo("On/off key", AutoAdvance::KeyName(o.keyDik))) {
+            int nk = 0;
+            const AutoAdvance::KeyChoice* keys = AutoAdvance::KeyChoices(&nk);
+            for (int i = 0; i < nk; ++i) {
+                int dik = keys[i].dik;
+                bool taken = dik && (Input::GameUsesKeyInDialogue(dik) || dik == Input::ToggleKeyDik());
+                bool cur = o.keyDik == dik;
+                ImGui::PushID(i);
+                ImGui::BeginDisabled(taken && !cur);
+                if (ImGui::Selectable(keys[i].name, cur) && !taken) AutoAdvance::SetKey(dik);
+                ImGui::EndDisabled();
+                if (taken && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip(dik == Input::ToggleKeyDik() ? "This key opens and closes the trainer."
+                                                                   : "The game uses this key in conversations.");
+                if (cur) ImGui::SetItemDefaultFocus();
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Turns auto-advance on or off while a conversation is on screen. The key is "
+                              "only taken during conversations, so everywhere else it does what it always "
+                              "does (A, for example, still walks left).");
+        if (o.keyDik)
+            W::Dim("Press %s during a conversation to turn it on or off. While it's on, \"Autoplay On\" "
+                   "shows above the conversation box.", AutoAdvance::KeyName(o.keyDik));
         W::Dim("Now: %s. Holding any key pauses it.", AutoAdvance::Status());
     }
 

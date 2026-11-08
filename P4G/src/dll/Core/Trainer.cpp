@@ -49,6 +49,7 @@ DWORD WINAPI MainThread(LPVOID) {
         bool d3d = D3DHook::Install();
         bool in = Input::Install();
         if (hc.supported) {
+            in &= Input::InstallGameHooks();
             Battle::InstallHooks();
             BattleFx::InstallHooks();
             Levels::InstallHooks();

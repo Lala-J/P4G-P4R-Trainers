@@ -9,6 +9,7 @@
 #include "Engine/Calendar.h"
 #include "Engine/GameState.h"
 #include "Engine/HostCheck.h"
+#include "Features/AutoAdvance.h"
 #include "Features/CaseFile.h"
 #include "Features/Spoilers.h"
 #include "Hooks/Hook.h"
@@ -146,14 +147,15 @@ void Settings() {
     const Input::KeyOption* keys = Input::ToggleKeyOptions(&nk);
     for (int i = 0; i < nk; ++i) {
         if (i % 8) ImGui::SameLine();
-        bool used = Input::GameUsesKey(keys[i].dik);
+        bool autoKey = AutoAdvance::Opts().keyDik == keys[i].dik;
+        bool used = Input::GameUsesKey(keys[i].dik) || autoKey;
         bool cur = Input::ToggleKey() == keys[i].vk;
         ImGui::PushID(i);
         ImGui::BeginDisabled(used && !cur);
         if (ImGui::Selectable(keys[i].name, cur, 0, ImVec2(110 * sc, 0)) && !used) Input::SetToggleKey(keys[i].vk);
         ImGui::EndDisabled();
         if (used && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-            ImGui::SetTooltip("The game uses this key.");
+            ImGui::SetTooltip(autoKey ? "This key turns dialogue auto-advance on and off." : "The game uses this key.");
         ImGui::PopID();
     }
     ImGui::Spacing();
