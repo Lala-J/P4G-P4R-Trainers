@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <cctype>
+#include <cstdio>
 #include <string>
 
 #include "Engine/GameState.h"
@@ -17,6 +18,39 @@ using namespace Theme;
 namespace {
 
 char g_search[48] = "";
+uint16_t g_pick = 0;  // shadow whose details are shown
+
+void DrawDetails(uint16_t id) {
+    float sc = Overlay::Scale();
+    auto d = Intel::Info(id);
+    if (!d.ok) return;
+    std::string arc = Names::Arcana(d.arcana);
+    W::BeginCard("details", ImVec2(0, 150 * sc), W::ArcanaColor(d.arcana));
+    ImGui::PushFont(g_fonts.bold);
+    ImGui::Text("%s", Names::Enemy(id).c_str());
+    ImGui::PopFont();
+    ImGui::SameLine();
+    W::Chip(arc.empty() ? "?" : arc.c_str(), W::ArcanaColor(d.arcana));
+    ImGui::SameLine();
+    ImGui::Text("Lv %u   HP %u   SP %u", d.level, d.hp, d.sp);
+    ImGui::SameLine();
+    W::Dim("St %u  Ma %u  En %u  Ag %u  Lu %u", d.stats[0], d.stats[1], d.stats[2], d.stats[3], d.stats[4]);
+    std::string skills;
+    for (uint16_t s : d.skills)
+        if (s) skills += (skills.empty() ? "" : ", ") + Names::SkillOr(s);
+    ImGui::TextWrapped("Skills: %s", skills.empty() ? "—" : skills.c_str());
+    std::string drops;
+    for (int i = 0; i < 3; ++i) {
+        if (!d.drop[i]) continue;
+        char b[96];
+        snprintf(b, sizeof b, "%s%s (%.0f%%)", drops.empty() ? "" : ", ", Names::ItemOr(d.drop[i]).c_str(),
+                 d.dropRate[i] / 10.0);
+        drops += b;
+    }
+    ImGui::TextWrapped("Drops: %s", drops.empty() ? "—" : drops.c_str());
+    W::Dim("Gives %u EXP and ¥%u. Affinities below.", d.exp, d.yen);
+    W::EndCard();
+}
 
 ImU32 AffColor(Intel::Aff a) {
     switch (a) {
@@ -105,7 +139,8 @@ void EnemyIntel() {
     SectionHeader("SHADOW LIST");
     ImGui::SetNextItemWidth(260 * sc);
     ImGui::InputTextWithHint("##search", "Search shadows", g_search, sizeof g_search);
-    W::Dim("Shadows you haven't encountered are hidden; reveal them one at a time.");
+    W::Dim("Shadows you haven't encountered are hidden; reveal them one at a time. Click a name for details.");
+    if (g_pick) DrawDetails(g_pick);
     float cell = 52 * sc;
     if (ImGui::BeginChild("list", ImVec2(0, 0), ImGuiChildFlags_None)) {
         ImGui::Dummy(ImVec2(220 * sc, 0));
@@ -128,7 +163,7 @@ void EnemyIntel() {
             if (!Spoilers::Visible(Spoilers::Kind::Enemy, id, seen)) {
                 Spoilers::HiddenPlaceholder(Spoilers::Kind::Enemy, id, "not encountered");
             } else {
-                ImGui::TextUnformatted(n.c_str());
+                if (ImGui::Selectable(n.c_str(), g_pick == id, 0, ImVec2(210 * sc, 0))) g_pick = g_pick == id ? 0 : id;
                 ImGui::SameLine(220 * sc + ImGui::GetStyle().ItemSpacing.x);
                 AffRow(id, 0, 8, cell);
                 ImGui::SameLine(0, 14 * sc);

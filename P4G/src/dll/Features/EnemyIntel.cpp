@@ -95,4 +95,26 @@ bool& ShowHud() {
 
 void SaveOptions() { Settings::SetInt("intel", "hud", g_hud ? 1 : 0); }
 
+Details Info(uint16_t id) {
+    Details d;
+    uintptr_t t = Ptr(Addr::pEnemyTable);
+    if (!t || id >= 368 || !Sig::Readable(t + id * 0x3C, 0x3C)) return d;
+    const uint8_t* e = reinterpret_cast<const uint8_t*>(t + id * 0x3C);
+    auto u16 = [e](int off) { return *reinterpret_cast<const uint16_t*>(e + off); };
+    d.ok = true;
+    d.arcana = e[2];
+    d.level = e[3];
+    d.hp = u16(4);
+    d.sp = u16(6);
+    for (int i = 0; i < 5; ++i) d.stats[i] = e[8 + i];
+    for (int i = 0; i < 8; ++i) d.skills[i] = u16(0x0E + i * 2);
+    d.exp = u16(0x1E);
+    d.yen = u16(0x20);
+    for (int i = 0; i < 3; ++i) {
+        d.drop[i] = u16(0x22 + i * 4);
+        d.dropRate[i] = u16(0x24 + i * 4);
+    }
+    return d;
+}
+
 }  // namespace Intel

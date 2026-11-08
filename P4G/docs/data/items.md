@@ -26,3 +26,13 @@ The game's copy of `init/itemtbl.bin`: one 0x44-byte entry per item id (0x000–
 - The swap is the script function `SET_EQUIPMENT (member, slot 0 weapon / 1 armour / 2 accessory /
   3 outfit, item)`, which (as the script library notes) does no bag bookkeeping itself.
 - Party unit +0x4C holds the four equipped item ids.
+
+## Enemy records — `*(0x140EC0920)`
+
+0x3C bytes per enemy id: +0x02 arcana, +0x03 level, +0x04 HP, +0x06 SP, +0x08 St Ma En Ag Lu,
++0x0E skills[8], +0x1E EXP, +0x20 yen, +0x22 drops: {item, chance per 1000} x 3, +0x3A AI index.
+
+Encounters (`battle/ENCOUNT.TBL`, in init_free.bin): 944 x 24 bytes, enemy ids at +0x08..+0x11;
+the third segment holds 68 encounter pools of 252 bytes ({encounter, weight} pairs, plus a rare
+group). How the game picks a pool for a floor is not mapped yet, so the trainer doesn't list
+where a shadow appears.
