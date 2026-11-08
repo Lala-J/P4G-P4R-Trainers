@@ -78,6 +78,13 @@ constexpr uintptr_t AiRunAway = 0x14006F7B0;          // AI 0x203F [DRV AI flow 
 constexpr uintptr_t AiWait = 0x14006F820;             // AI 0x2040
 constexpr uintptr_t CanChangeToState = 0x140099180;   // [MOD:p4g64.quickBattleRestart sig][DRV]
 constexpr uintptr_t PersonaCount = 0x140096650;       // u16 (1, 0): Yu's Persona count [DRV]
+// --- Levels (battle-results sequence) ------------------------------------------------------
+constexpr uintptr_t GenerateLevelUpPersona = 0x1400D7A90;  // (persona, u8 changes[0x88], gained) [MOD:p4g64.expShare][DRV]
+constexpr uintptr_t ApplyLevelUp = 0x1400D7F20;            // thunk (persona, changes) [DRV GivePartyMembersExp]
+constexpr uintptr_t PersonaReqExp = 0x1400D8050;           // thunk u32 (persona, level) [DRV]
+constexpr uintptr_t GetPartyMemberPersona = 0x1400D6E80;   // thunk Persona* (charId) [DRV]
+constexpr uintptr_t CalculateGainedExp = 0x140100F50;      // [MOD:p4g64.expShare]
+constexpr uintptr_t GivePartyMembersExp = 0x140101AD0;     // [MOD:p4g64.expShare][DRV]
 constexpr uintptr_t pEnemyTable = 0x140EC0920;        // -> 0x3C per enemy id [MOD:AquaRose7][DRV]
 constexpr uintptr_t pEnemyAffinity = 0x140EC0970;     // -> u16[16] per enemy id: hi byte flags [DRV]
 constexpr uintptr_t CmmGetRank = 0x1401AE7F0;    // u16 (u16 id)                   [DRV]
@@ -138,6 +145,15 @@ inline constexpr Probe kProbes[] = {
      "40 53 48 83 EC 20 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 C9 48 8B 98 58 02 00 00 E8 ?? ?? ?? ?? 25 FF FF FF 00 4C 8D 0D ?? ?? ?? ?? 0F BA E8 1A", 0},
     {"AI_WAIT", "battlefx", ProbeKind::Code, AiWait,
      "40 53 48 83 EC 20 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 C9 48 8B 98 58 02 00 00 E8 ?? ?? ?? ?? 25 FF FF FF 00 4C 8D 0D ?? ?? ?? ?? 0D 00 00 00 05", 0},
+    {"GenerateLevelUpPersona", "levels", ProbeKind::Code, GenerateLevelUpPersona,
+     "48 89 5C 24 20 48 89 54 24 10 48 89 4C 24 08 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 30", 0},
+    {"ApplyLevelUp thunk", "levels", ProbeKind::Thunk, ApplyLevelUp, nullptr, 0},
+    {"PersonaReqExp thunk", "levels", ProbeKind::Thunk, PersonaReqExp, nullptr, 0},
+    {"GetPartyMemberPersona thunk", "levels", ProbeKind::Thunk, GetPartyMemberPersona, nullptr, 0},
+    {"CalculateGainedExp", "levels", ProbeKind::Code, CalculateGainedExp,
+     "48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 8B F1 48 8B FA", 0},
+    {"GivePartyMembersExp", "levels", ProbeKind::Code, GivePartyMembersExp,
+     "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8D B3 9A 06 00 00", 0},
     {"Enemy affinity table use", "intel", ProbeKind::Code, 0x1400D363E,
      "48 8B 05 2B D3 DE 00 0F B7 14 48", 0},
     {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,

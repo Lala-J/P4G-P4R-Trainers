@@ -38,8 +38,6 @@ PLANNED(DrawToday, "M4b", "Everything you can do in the current time slot, and w
         "Priority: last chances > romance > links / hangouts > clubs / jobs > the rest.")
 PLANNED(DrawRomance, "M4c", "Pick a partner by portrait and follow a step-by-step route,",
         "with every step hidden until you choose to reveal it.")
-PLANNED(DrawLevels, "M4", "Levels and EXP for Yu, every party member and every Persona,",
-        "using the game's own level-up routines.")
 PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
 PLANNED(DrawField, "M4c", "Shops from anywhere, floor select, party changes in dungeons,",
         "save anywhere, auto-advance for dialogue.")
@@ -55,7 +53,7 @@ const PageDef kPages[] = {
     {"Battle", Pages::BattlePage, true},             {"Inventory", Pages::Inventory, true},
     {"Personas", Pages::Personas, true},       {"Social Links", Pages::SocialLinks, true},
     {"Romance", DrawRomance, false},           {"Case File", Pages::CaseFile, true},
-    {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", DrawLevels, false},
+    {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", Pages::LevelsExp, true},
     {"Enemy Intel", Pages::EnemyIntel, true},         {"NG+ & Unlocks", DrawNgPlus, false},
     {"Field & Dungeon", DrawField, false},     {"Advanced", Pages::Advanced, true},
     {"Settings", Pages::Settings, true},       {"About", Pages::About, true},

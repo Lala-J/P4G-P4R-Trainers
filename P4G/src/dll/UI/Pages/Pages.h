@@ -12,6 +12,7 @@ void Personas();
 void BattlePage();
 void Advanced();
 void EnemyIntel();
+void LevelsExp();
 void IntelHud();
 void Settings();
 void About();

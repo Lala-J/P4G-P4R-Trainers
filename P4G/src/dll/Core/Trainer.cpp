@@ -5,6 +5,7 @@
 #include "Features/Battle.h"
 #include "Features/BattleOverrides.h"
 #include "Features/Inventory.h"
+#include "Features/Levels.h"
 #include "Features/Trace.h"
 #include "Hooks/D3D11Hook.h"
 #include "Hooks/Hook.h"
@@ -44,6 +45,7 @@ DWORD WINAPI MainThread(LPVOID) {
         if (hc.supported) {
             Battle::InstallHooks();
             BattleFx::InstallHooks();
+            Levels::InstallHooks();
             InventoryFx::InstallHooks();
             Trace::InstallHooks();
         }
