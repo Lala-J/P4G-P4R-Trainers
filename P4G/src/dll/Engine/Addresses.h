@@ -90,6 +90,9 @@ constexpr uintptr_t GivePartyMembersExp = 0x140101AD0;     // [MOD:p4g64.expShar
 constexpr uintptr_t DrawDialog = 0x140461880;    // MsgWindow::DrawDialog(info)  [MOD:p4g64.accessibility][DRV]
 constexpr uintptr_t CriSetCueId = 0x140611E4C;   // criAtomExPlayer_SetCueId     [MOD:Ryo][DRV]
 constexpr uintptr_t CriGetStatus = 0x140610668;  // criAtomExPlayer_GetStatus    [MOD:Ryo][DRV]
+// --- Items & equipment (docs/data/items.md) --------------------------------------------------
+constexpr uintptr_t pItemTable = 0x1411A5940;   // -> item[id] x 0x44: +0 kind, +8 atk, +A hit, +10 def, +12 eva, +30 wielders [DRV]
+constexpr uintptr_t CanEquip = 0x1401A0220;     // int (i16 item, i16 charId): bit (charId+4) of +30 [DRV]
 // --- Persona stock & compendium (docs/data/personas.md) -------------------------------------
 constexpr uintptr_t CreatePersona = 0x1400D8230;     // thunk void (Persona* out, u16 id): base form [DRV]
 constexpr uintptr_t AddPersonaCopy = 0x1400D7450;    // int (const Persona*): free slot, copy, register; 0 = full [DRV]
@@ -187,6 +190,9 @@ inline constexpr Probe kProbes[] = {
      "48 8B 05 2B D3 DE 00 0F B7 14 48", 0},
     {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,
      "48 89 5C 24 10 57 48 83 EC 20 48 8B F9 0F B7 DA 48 8D 0D", 0},
+    {"CanEquip", "equipment", ProbeKind::Code, CanEquip,
+     "48 89 5C 24 08 57 48 83 EC 20 48 0F BF F9 48 8D 0D ?? ?? ?? ?? 0F BF DA E8 ?? ?? ?? ?? 8D 43 04", 0},
+    {"Item table loader", "equipment", ProbeKind::Code, 0x14019EC27, "48 8D 05 22 6D FC 00 48 89 05 0B 6D 00 01", 0},
     {"CreatePersona thunk", "stock", ProbeKind::Thunk, CreatePersona, nullptr, 0},
     {"FindStockById thunk", "stock", ProbeKind::Thunk, FindStockById, nullptr, 0},
     {"AddPersonaCopy", "stock", ProbeKind::Code, AddPersonaCopy,

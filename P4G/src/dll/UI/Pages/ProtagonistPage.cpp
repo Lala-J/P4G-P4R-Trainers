@@ -6,12 +6,103 @@
 #include "Engine/GameState.h"
 #include "Engine/Names.h"
 #include "Features/Edits.h"
+#include "Features/Equipment.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
 #include "UI/Theme.h"
 #include "UI/Widgets.h"
 
 using namespace Theme;
+
+namespace {
+
+int g_eqChar = 1;   // member whose gear is shown
+int g_eqSlot = -1;  // slot whose picker is open
+
+bool Joined(const Game::Snapshot& s, int c) {
+    if (c == Game::Yu) return true;
+    static const int flag[9] = {0, 0, 48, 49, 50, 52, 51, 54, 53};  // by character id
+    return s.Flag(flag[c]);
+}
+
+std::string StatLine(uint16_t item, int slot) {
+    auto st = Equipment::ItemStats(item);
+    char b[64];
+    if (slot == Equipment::Weapon) snprintf(b, sizeof b, "Atk %d  Hit %d", st.attack, st.hit);
+    else if (slot == Equipment::Armour) snprintf(b, sizeof b, "Def %d  Eva %d", st.defence, st.evasion);
+    else b[0] = 0;
+    return b;
+}
+
+void DrawEquipment(const Game::Snapshot& s) {
+    float sc = Overlay::Scale();
+    SectionHeader("EQUIPMENT");
+    if (!Equipment::Available()) {
+        W::Dim("Unavailable on this game build (a host check failed).");
+        return;
+    }
+    static const char* who[] = {"", "Yu", "Yosuke", "Chie", "Yukiko", "Rise", "Kanji", "Naoto", "Teddie"};
+    int shown = 0;
+    for (int c = 1; c <= 8; ++c) {
+        if (!Joined(s, c)) continue;  // members who haven't joined stay hidden (spoilers)
+        if (shown++) ImGui::SameLine();
+        bool sel = g_eqChar == c;
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(C::Yellow));
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(C::Black));
+        ImGui::PushID(c);
+        if (ImGui::Button(who[c])) {
+            g_eqChar = c;
+            g_eqSlot = -1;
+        }
+        ImGui::PopID();
+        if (sel) ImGui::PopStyleColor(2);
+    }
+    if (!Joined(s, g_eqChar)) g_eqChar = 1;
+    const auto& u = s.U(g_eqChar);
+    for (int slot = 0; slot < 4; ++slot) {
+        ImGui::PushID(100 + slot);
+        uint16_t id = u.equip[slot];
+        char label[96];
+        snprintf(label, sizeof label, "%-10s %s", Equipment::SlotName(slot), id ? Names::ItemOr(id).c_str() : "—");
+        bool open = g_eqSlot == slot;
+        if (open) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(C::YellowDim));
+        if (ImGui::Button(label, ImVec2(330 * sc, 0))) g_eqSlot = open ? -1 : slot;
+        if (open) ImGui::PopStyleColor();
+        ImGui::SameLine();
+        W::Dim("%s", StatLine(id, slot).c_str());
+        ImGui::PopID();
+    }
+    if (g_eqSlot < 0) {
+        W::Dim("Pick a slot to see what this member can wear from the bag. The old piece goes back into the "
+               "bag, as in the game's own equip menu.");
+        return;
+    }
+    ImGui::Spacing();
+    W::Title(Equipment::SlotName(g_eqSlot));
+    ImGui::BeginChild("eqpick", ImVec2(0, 220 * sc), ImGuiChildFlags_Borders);
+    int n = 0;
+    for (uint16_t item = 1; item < Game::kItems; ++item) {
+        if (!Equipment::ItemFitsSlot(item, g_eqSlot) || !Equipment::CanWield(item, g_eqChar)) continue;
+        if (!s.items[item]) continue;
+        std::string nm = Names::Item(item);
+        if (nm.empty()) continue;
+        ++n;
+        ImGui::PushID(item);
+        const char* why = Equipment::WhyNot(g_eqChar, g_eqSlot, item);
+        char row[128];
+        snprintf(row, sizeof row, "%s%s", nm.c_str(), u.equip[g_eqSlot] == item ? "  (equipped)" : "");
+        ImGui::BeginDisabled(why != nullptr);
+        if (ImGui::Selectable(row, false, 0, ImVec2(330 * sc, 0))) Equipment::Equip(g_eqChar, g_eqSlot, item);
+        ImGui::EndDisabled();
+        ImGui::SameLine(360 * sc);
+        W::Dim("%s  ×%u", StatLine(item, g_eqSlot).c_str(), s.items[item]);
+        ImGui::PopID();
+    }
+    if (!n) W::Dim("Nothing in the bag that %s can use here.", who[g_eqChar]);
+    ImGui::EndChild();
+}
+
+}  // namespace
 
 namespace Pages {
 
@@ -100,13 +191,7 @@ void Protagonist() {
     }
     W::Dim("Rank thresholds are fan-derived (the game shows them only as music notes).");
 
-    SectionHeader("EQUIPMENT");
-    static const char* slots[] = {"Weapon", "Armor", "Accessory", "Outfit"};
-    for (int i = 0; i < 4; ++i) {
-        uint16_t id = yu.equip[i];
-        std::string n = id ? Names::ItemOr(id) : std::string("—");
-        ImGui::Text("%-10s %s", slots[i], n.c_str());
-    }
+    DrawEquipment(s);
 }
 
 }  // namespace Pages
