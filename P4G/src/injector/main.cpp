@@ -182,7 +182,7 @@ bool Inject(DWORD pid, HANDLE proc, const std::wstring& dll) {
         Say(L"LoadLibrary failed inside the game. See %%LOCALAPPDATA%%\\P4GTrainer\\logs.");
         return false;
     }
-    Say(L"Trainer loaded. Press Insert (or Back + R3) in game.");
+    Say(L"Trainer loaded. Press Insert (or Back + R3) in game, unless you changed them in Settings.");
     return true;
 }
 

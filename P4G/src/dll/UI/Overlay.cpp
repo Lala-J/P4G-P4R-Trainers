@@ -183,9 +183,8 @@ void OnPresent(IDXGISwapChain* sc) {
     XINPUT_STATE ps{};
     bool pad = Input::ReadPad(&ps);
     WORD b = pad ? ps.Gamepad.wButtons : 0;
-    auto combo = [](WORD x) {
-        return (x & XINPUT_GAMEPAD_BACK) && (x & XINPUT_GAMEPAD_RIGHT_THUMB);
-    };
+    WORD mask = Input::PadComboMask();
+    auto combo = [mask](WORD x) { return (x & mask) == mask; };
     if (combo(b) && !combo(g_prevButtons)) Toggle();
     g_prevButtons = b;
 

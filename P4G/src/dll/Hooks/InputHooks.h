@@ -38,8 +38,29 @@ void OnOverlayClosed();
 // Verbose input logging, enabled when %LOCALAPPDATA%\P4GTrainer\debug-input exists.
 extern bool g_debug;
 
-// Virtual key that toggles the overlay (default VK_INSERT).
+// Virtual key that toggles the overlay (default VK_INSERT), and the controller combo.
 void SetToggleKey(int vk);
 int ToggleKey();
+
+struct KeyOption {
+    int vk;
+    int dik;            // DirectInput scan code, to compare with the game's own key bindings
+    const char* name;
+};
+const KeyOption* ToggleKeyOptions(int* count);
+const char* ToggleKeyName();
+bool GameUsesKey(int dik);      // bound to an action in the game's own key config (P4G.ini)
+
+struct PadCombo {
+    WORD mask;
+    const char* name;
+};
+const PadCombo* PadCombos(int* count);
+void SetPadCombo(int index);
+int PadComboIndex();
+WORD PadComboMask();
+const char* PadComboName();
+
+void LoadHotkeys();             // from settings.ini [input]
 
 }  // namespace Input

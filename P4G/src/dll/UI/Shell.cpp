@@ -138,7 +138,8 @@ void DrawRail(float width) {
 void DrawFooter() {
     ImGui::PushFont(g_fonts.note);
     ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Grey),
-                       "LB/RB  page      A  select      B  back      Start / Esc / Insert / Back+R3  close");
+                       "LB/RB  page      A  select      B  back      Start / Esc / %s / %s  close",
+                       Input::ToggleKeyName(), Input::PadComboName());
     ImGui::PopFont();
 }
 

@@ -14,6 +14,7 @@
 #include "UI/Overlay.h"
 #include "Util/Log.h"
 #include "Util/Paths.h"
+#include "Util/Settings.h"
 
 namespace Input {
 extern bool g_debug;
@@ -312,6 +313,7 @@ bool Install() {
     bool ok = true;
     g_debug = GetFileAttributesW((Paths::DataDir() + L"\\debug-input").c_str()) != INVALID_FILE_ATTRIBUTES;
     if (g_debug) LOGI("input: verbose logging on");
+    LoadHotkeys();
 
     // DirectInput8: borrow the method addresses from a throwaway keyboard device.
     if (HMODULE di = GetModuleHandleW(L"dinput8.dll")) {
@@ -418,8 +420,86 @@ void OnOverlayClosed() {
     g_queue.clear();
 }
 
-void SetToggleKey(int vk) { g_toggleVk = vk; }
+namespace {
+const KeyOption kKeys[] = {
+    {VK_INSERT, 0xD2, "Insert"}, {VK_HOME, 0xC7, "Home"},  {VK_END, 0xCF, "End"},   {VK_DELETE, 0xD3, "Delete"},
+    {VK_F2, 0x3C, "F2"},         {VK_F3, 0x3D, "F3"},      {VK_F4, 0x3E, "F4"},     {VK_F5, 0x3F, "F5"},
+    {VK_F6, 0x40, "F6"},         {VK_F7, 0x41, "F7"},      {VK_F8, 0x42, "F8"},     {VK_F9, 0x43, "F9"},
+    {VK_F10, 0x44, "F10"},       {VK_F11, 0x57, "F11"},    {VK_SCROLL, 0x46, "Scroll Lock"},
+    {VK_PAUSE, 0xC5, "Pause"},
+};
+const PadCombo kCombos[] = {
+    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_RIGHT_THUMB, "Back + R3"},
+    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_LEFT_THUMB, "Back + L3"},
+    {XINPUT_GAMEPAD_LEFT_THUMB | XINPUT_GAMEPAD_RIGHT_THUMB, "L3 + R3"},
+    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_START, "Back + Start"},
+};
+std::atomic<int> g_combo{0};
+bool g_boundRead = false;
+bool g_bound[256] = {};
+
+void ReadGameBindings() {
+    if (g_boundRead) return;
+    g_boundRead = true;
+    wchar_t path[MAX_PATH];
+    if (!GetEnvironmentVariableW(L"LOCALAPPDATA", path, MAX_PATH)) return;
+    std::wstring ini = std::wstring(path) + L"\\SEGA\\P4G\\P4G.ini";
+    for (int a = 0; a < 64; ++a) {
+        wchar_t key[16], v[128] = {};
+        swprintf(key, 16, L"Action%02d", a);
+        GetPrivateProfileStringW(L"ActionConfig", key, L"", v, 128, ini.c_str());
+        for (wchar_t* p = v; *p; ++p)  // "3-16384,0-0,1-57,1-28": "1-n" entries are keyboard keys
+            if (p[0] == L'1' && p[1] == L'-' && (p == v || p[-1] == L',')) {
+                int dik = _wtoi(p + 2);
+                if (dik > 0 && dik < 256) g_bound[dik] = true;
+            }
+    }
+}
+}  // namespace
+
+void SetToggleKey(int vk) {
+    g_toggleVk = vk;
+    Settings::SetInt("input", "toggleVk", vk);
+}
 int ToggleKey() { return g_toggleVk.load(); }
+
+const KeyOption* ToggleKeyOptions(int* count) {
+    *count = int(sizeof kKeys / sizeof kKeys[0]);
+    return kKeys;
+}
+
+const char* ToggleKeyName() {
+    for (const auto& k : kKeys)
+        if (k.vk == g_toggleVk.load()) return k.name;
+    return "Insert";
+}
+
+bool GameUsesKey(int dik) {
+    ReadGameBindings();
+    return dik > 0 && dik < 256 && g_bound[dik];
+}
+
+const PadCombo* PadCombos(int* count) {
+    *count = int(sizeof kCombos / sizeof kCombos[0]);
+    return kCombos;
+}
+void SetPadCombo(int index) {
+    if (index < 0 || index >= int(sizeof kCombos / sizeof kCombos[0])) return;
+    g_combo = index;
+    Settings::SetInt("input", "padCombo", index);
+}
+int PadComboIndex() { return g_combo.load(); }
+WORD PadComboMask() { return kCombos[g_combo.load()].mask; }
+const char* PadComboName() { return kCombos[g_combo.load()].name; }
+
+void LoadHotkeys() {
+    int vk = Settings::GetInt("input", "toggleVk", VK_INSERT);
+    bool known = false;
+    for (const auto& k : kKeys) known |= k.vk == vk;
+    g_toggleVk = known ? vk : VK_INSERT;
+    int c = Settings::GetInt("input", "padCombo", 0);
+    g_combo = (c >= 0 && c < int(sizeof kCombos / sizeof kCombos[0])) ? c : 0;
+}
 
 // --- Mouse wheel ---------------------------------------------------------------------------------
 namespace {

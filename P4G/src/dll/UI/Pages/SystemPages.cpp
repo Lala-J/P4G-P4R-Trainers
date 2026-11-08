@@ -12,6 +12,7 @@
 #include "Features/CaseFile.h"
 #include "Features/Spoilers.h"
 #include "Hooks/Hook.h"
+#include "Hooks/InputHooks.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
 #include "UI/Theme.h"
@@ -103,7 +104,8 @@ void Dashboard() {
         W::Dim("Your saves were backed up this session (backups\\%s).",
                Paths::Narrow(bk.substr(cut + 1)).c_str());
     }
-    W::Dim("Insert or Back + R3 opens and closes this. LB / RB or Page Up / Down switch pages.");
+    W::Dim("%s or %s opens and closes this. LB / RB or Page Up / Down switch pages.", Input::ToggleKeyName(),
+           Input::PadComboName());
 }
 
 void Settings() {
@@ -118,8 +120,36 @@ void Settings() {
     if (ImGui::RadioButton("Show everything", p == 1)) Spoilers::SetPolicy(Spoilers::Policy::ShowAll);
     W::Dim("Hidden items show as ??? with a Reveal button that reveals just that one item.");
 
-    SectionHeader("HOTKEYS");
-    ImGui::Text("Toggle: Insert   ·   Controller: Back + R3");
+    SectionHeader("OPEN / CLOSE THE TRAINER");
+    float sc = Overlay::Scale();
+    W::Title("Keyboard");
+    W::Dim("Keys the game itself uses (from its own key settings) can't be picked.");
+    int nk = 0;
+    const Input::KeyOption* keys = Input::ToggleKeyOptions(&nk);
+    for (int i = 0; i < nk; ++i) {
+        if (i % 8) ImGui::SameLine();
+        bool used = Input::GameUsesKey(keys[i].dik);
+        bool cur = Input::ToggleKey() == keys[i].vk;
+        ImGui::PushID(i);
+        ImGui::BeginDisabled(used && !cur);
+        if (ImGui::Selectable(keys[i].name, cur, 0, ImVec2(110 * sc, 0)) && !used) Input::SetToggleKey(keys[i].vk);
+        ImGui::EndDisabled();
+        if (used && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("The game uses this key.");
+        ImGui::PopID();
+    }
+    ImGui::Spacing();
+    W::Title("Controller");
+    int nc = 0;
+    const Input::PadCombo* combos = Input::PadCombos(&nc);
+    for (int i = 0; i < nc; ++i) {
+        if (i) ImGui::SameLine();
+        ImGui::PushID(100 + i);
+        if (ImGui::Selectable(combos[i].name, Input::PadComboIndex() == i, 0, ImVec2(150 * sc, 0)))
+            Input::SetPadCombo(i);
+        ImGui::PopID();
+    }
+    W::Dim("Both buttons together. Saved for next time.");
 }
 
 void About() {
