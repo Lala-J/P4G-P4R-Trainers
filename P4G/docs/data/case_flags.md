@@ -9,10 +9,21 @@ solved: missing a deadline ends the game. This needs no flags and is always righ
 
 ## Rule 2 — the rescue flag (for the days before the deadline)
 
-| Case | Flag | Status | Evidence |
-|---|---|---|---|
-| Yukiko | 35 | **verified** | watched live, see below |
-| others | — | not yet identified | — |
+| Case | Rescue flag | Boss flag | Rescue event | Window (scheduler) | Evidence |
+|---|---|---|---|---|---|
+| Yukiko | 35 | 17 | E181 | 4/18 – 4/29 | scripts + **watched live** |
+| Kanji | 36 | 18 | E216 | 5/18 – 6/4 | scripts |
+| Rise | 37 | 19 | E254 | 6/24 – 7/9 | scripts |
+| Mitsuo | 38 | 20 | E282 | 7/27 – 8/12 | scripts |
+| Naoto | 39 | 21 | E309 | 9/16 – 10/5 | scripts |
+| Nanako | 40 | 22 | E358 | 11/6 – 11/20 | scripts |
+
+**The rule, from the game's own day scheduler** (`scheduler/scheduler_MM.bf`, every evening
+procedure `sdlMM_DD_PM_D` in the case's window): *if the rescue flag is off and the boss flag is on,
+turn the rescue flag on and play the rescue cutscene.* The boss flag is set by the boss-room event
+in `field/script/dungeon.bf` (`eve_*_bossroom`). Every window ends on exactly the case's deadline.
+The later dungeons (Magatsu Inaba, Hollow Forest, Yomotsu Hirasaka) have no rescue flag of this
+kind; the Case File uses the date for them.
 
 ### Yukiko: before/after save diff
 
