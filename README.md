@@ -24,9 +24,21 @@ guessing. The Dashboard says so.
    - `P4GTrainer.exe --wait` waits for the game to start and then loads.
    - `P4GTrainer.exe --eject` unloads the trainer; `--reload` swaps in a newer build.
 4. In game, press **Insert**, or **Back + R3** on a controller, to open or close the trainer.
+   Both can be changed on the Settings page (keys the game itself uses are never offered).
 
 While the trainer is open the game receives no input. Inside the trainer, **LB / RB** (or
-Page Up / Page Down) switch pages, and **Esc** or **Start** closes it.
+Page Up / Page Down) switch pages, and **Esc** or **Start** closes it. Mouse, keyboard and
+controller all work everywhere.
+
+Good to know:
+
+- Changes that touch what the game is doing right now (the Persona stock, shop and Velvet Room
+  shortcuts, floor changes) only run while you're free-roaming. Otherwise the button says why
+  not, e.g. "Not during a battle".
+- Dialogue auto-advance only ever presses Confirm in the conversation box, never on a choice,
+  menu or pop-up. Holding any key pauses it.
+- Toggles (battle overrides, never-run-out items, minimap reveal, auto-advance, EXP options)
+  are remembered between sessions in `%LOCALAPPDATA%\P4GTrainer\settings.ini`.
 
 The first time the trainer loads in a session it copies your save folder to
 `%LOCALAPPDATA%\P4GTrainer\backups\<date-time>\`. The trainer never writes save files itself.
@@ -41,7 +53,7 @@ The first time the trainer loads in a session it copies your save folder to
 | Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee | ✅ |
 | Inventory | Every item in the game by category, set counts through the game's own routine, items that never run out in battle or the camp menu | ✅ |
 | Personas | Yu's stock and every party member's Persona; edit stats and skills | ✅ |
-| Personas (more) | Give or remove Personas, compendium, fusion preview, Velvet Room rule overrides | planned |
+| Personas (more) | Get any Persona Yu can hold (base form), remove one, summon from the compendium (with or without the fee), save to the compendium; fuse ultimates before their link is maxed | ✅ |
 | Social Links | Rank and points against the game's own thresholds for every link, "ready to rank up", locked-out pairs, spoiler-hidden unmet links | ✅ |
 | Social Links (edits) | Rank-ups that also replay the link's own story effects, "ready at next hangout", with prerequisite warnings | ✅ |
 | Romance | Pick a partner by portrait and follow a step-by-step route; every step stays hidden until you reveal it | ✅ |
@@ -49,10 +61,10 @@ The first time the trainer loads in a session it copies your save folder to
 | Protagonist | Level and EXP; Courage, Knowledge, Diligence, Understanding, Expression with ranks; money; equipment | ✅ |
 | Levels & EXP | Levels and EXP for Yu, party members and every Persona, using the game's own level-up routines | ✅ |
 | Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel | ✅ |
-| NG+ & Unlocks | New Game+ carry-overs granted one at a time, with warnings | planned |
+| NG+ & Unlocks | New Game+ carry-overs one at a time: social stats, money, the whole compendium, the New Game+ Persona | ✅ |
 | Field & Dungeon | Shops and the Velvet Room from anywhere in town, next / previous floor, the whole floor revealed on the minimap, save anywhere, auto-advance for dialogue | ✅ |
 | Advanced | Undo journal for every change | ✅ |
-| Advanced (more) | Labelled flag and counter browser | planned |
+| Advanced (more) | Browser for the game's event flags and counters, with known meanings, "changed since opened", and journaled edits | ✅ |
 
 #### Safety
 
@@ -67,7 +79,9 @@ The first time the trainer loads in a session it copies your save folder to
   reveal that one item.
 - **Things it deliberately doesn't do:** change the date, loop days, unlock the whole town map,
   "complete all quests", or start arbitrary events. They break the game's scheduler or skip
-  rewards in ways that can't be repaired.
+  rewards in ways that can't be repaired. It also doesn't mark a playthrough as New Game+ (the
+  story checks that in many places), and it doesn't lift the fusion level cap: the game checks
+  Yu's level in a dozen places, so instead you can get a higher-level Persona directly.
 
 ### Persona 4 remake (P4R)
 
@@ -85,15 +99,25 @@ tools/check_public.py        blocks commits containing local paths, account ids,
 .githooks/pre-commit         runs check_public on staged files (opt-in, see below)
 P4G/
   src/dll/                   the trainer (injected DLL)
-    Engine/                  Addresses.h (audited address table), HostCheck, SigScan, SaveBackup
-    Hooks/                   MinHook wrapper, D3D11 Present, input (DirectInput8, XInput, window)
-    UI/                      overlay, theme, shell and pages
-    Core/, Util/             lifecycle, logging, paths
+    Engine/                  Addresses.h (audited address table), HostCheck, SigScan, SaveBackup,
+                             GameThread (work queued onto the game's thread), FlowCaller (calls the
+                             game's own script functions), Natives, GameState (per-frame snapshot)
+    Features/                one module per feature (Battle, BattleOverrides, Inventory, PersonaStock,
+                             SocialLinks, Levels, FieldQol, AutoAdvance, EnemyIntel, Journal, ...)
+    Data/                    small tables: links, cases, romance routes, today's activities,
+                             generated link side effects (*.inc)
+    Hooks/                   MinHook wrapper, D3D11 Present, input (DirectInput8, XInput, window, wheel)
+    UI/                      overlay, theme, shell, portraits and pages
+    Core/, Util/             lifecycle, logging, paths, settings, CPK/PAK/TMX readers
   src/injector/              P4GTrainer.exe (attach / eject / hot-swap)
   src/tests/                 headless self-test, run by the build
   tools/                     env.sh, build.sh, fetch_deps.sh
-  tools/re/                  read-only reverse-engineering helpers and test drivers
+  tools/re/                  read-only reverse-engineering helpers and test drivers (screenshots,
+                             keys, clicks, title screen, auto-fight; they refuse to act on save screens)
+  tools/datamine/            CPK and flowscript readers that mine social link side effects from the
+                             player's own data files (output: src/dll/Data/*.inc, docs/data/)
   docs/research/             research notes the address table and rules are based on
+  docs/data/                 what was verified in the game: case flags, link events, minimap, ...
 P4R/                         placeholder
 ```
 
