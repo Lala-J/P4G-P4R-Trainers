@@ -28,6 +28,12 @@ struct Info {
 };
 Info Describe(uint16_t id);
 
+// Golden's two new arcana belong to links that are spoilers until met: Jester (Adachi) and Aeon
+// (Marie). True when the arcana may be shown (its link has started, it was revealed, or
+// spoilers are off).
+int ArcanaLink(uint8_t arcana);
+bool ArcanaVisible(uint8_t arcana);
+
 // Live (game thread or UI; plain reads).
 int Capacity();                                  // the game's own limit right now
 int Count();
@@ -45,6 +51,9 @@ void Give(uint16_t id);
 void Remove(int slot);
 void Summon(uint16_t id, bool pay);
 void Register(int slot);       // save this stock Persona's current form to the compendium
-void FillCompendium();         // register the base form of every Persona not yet registered
+// Register the base form of every Persona not yet registered (skipping arcana that are still
+// spoilers and the New Game+ Persona). CompendiumGaps counts what it would add.
+void FillCompendium();
+int CompendiumGaps();
 
 }  // namespace PersonaStock

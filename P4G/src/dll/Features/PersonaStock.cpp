@@ -13,6 +13,7 @@
 #include "Engine/Names.h"
 #include "Engine/SigScan.h"
 #include "Features/Journal.h"
+#include "Features/Spoilers.h"
 #include "Util/Log.h"
 
 namespace PersonaStock {
@@ -113,6 +114,35 @@ Info Describe(uint16_t id) {
         filled = true;
     }
     return cache[id];
+}
+
+int ArcanaLink(uint8_t arcana) {
+    switch (arcana) {
+        case 25: return 31;  // Jester -> Adachi
+        case 27: return 33;  // Aeon -> Marie
+    }
+    return 0;
+}
+
+bool ArcanaVisible(uint8_t arcana) {
+    int link = ArcanaLink(arcana);
+    if (!link) return true;
+    const Game::Link* e = Game::Current().FindLink(uint16_t(link));
+    return Spoilers::Visible(Spoilers::Kind::Link, link, e && e->rank);
+}
+
+namespace {
+bool FillCandidate(uint16_t id) {
+    Info i = Describe(id);
+    return i.yours && !i.ngPlus && ArcanaVisible(i.arcana);
+}
+}  // namespace
+
+int CompendiumGaps() {
+    int n = 0;
+    for (uint16_t id = 1; id < 256; ++id)
+        if (FillCandidate(id) && !Registered(id)) ++n;
+    return n;
 }
 
 int Capacity() {
@@ -251,11 +281,12 @@ void FillCompendium() {
         if (!c) return;
         std::vector<std::pair<uint16_t, Persona>> before;
         for (uint16_t id = 1; id < 256; ++id) {
-            Info i = Describe(id);
-            if (!i.yours || i.ngPlus || (c[id].valid & 1)) continue;
+            if (!FillCandidate(id) || (c[id].valid & 1)) continue;
             Persona p;
             NativeCreate(&p, id);
             if (p.id != id) continue;
+            // As the game's add-to-stock does before registering: keep bits 2-3, mark valid.
+            *reinterpret_cast<uint16_t*>(&p) = uint16_t((*reinterpret_cast<uint16_t*>(&p) & 0xC) | 1);
             before.push_back({id, c[id]});
             NativeRegister(&p);
         }

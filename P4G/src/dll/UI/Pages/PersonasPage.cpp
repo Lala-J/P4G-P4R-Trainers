@@ -242,22 +242,8 @@ void DrawStockManager(const Game::Snapshot& s) {
 int g_pick = -1;
 char g_pickFilter[32] = "";
 
-// Golden's two new arcana belong to links that are spoilers until met: Jester (Adachi) and Aeon
-// (Marie). Their Personas stay hidden until the link has started, or is revealed.
-int ArcanaLink(uint8_t arcana) {
-    switch (arcana) {
-        case 25: return 31;  // Jester -> Adachi
-        case 27: return 33;  // Aeon -> Marie
-    }
-    return 0;
-}
-
-bool ArcanaVisible(const Game::Snapshot& s, uint8_t arcana) {
-    int link = ArcanaLink(arcana);
-    if (!link) return true;
-    const Game::Link* e = s.FindLink(uint16_t(link));
-    return Spoilers::Visible(Spoilers::Kind::Link, link, e && e->rank);
-}
+int ArcanaLink(uint8_t arcana) { return PersonaStock::ArcanaLink(arcana); }
+bool ArcanaVisible(const Game::Snapshot&, uint8_t arcana) { return PersonaStock::ArcanaVisible(arcana); }
 
 bool NgVisible(uint16_t id, const PersonaStock::Info& i) {
     if (!ArcanaVisible(Game::Current(), i.arcana)) return false;

@@ -14,6 +14,10 @@ void SetSocialStat(int stat, uint16_t points);
 void SetItemCount(uint16_t id, uint8_t count);           // through the game's SetItemCount
 void SetPersonaStat(int slot, int stat, uint8_t base);   // stock slot 0..11, stat 0..4
 void SetPersonaSkill(int slot, int index, uint16_t skillId);
-void SetUnitHpSp(int charId, int hp, int sp);              // -1 = leave; clamped by the game's own helpers
+void SetUnitHpSp(int charId, int hp, int sp);
+
+// Raw event flags and counters, through the game's own BIT_ON / BIT_OFF / SET_CNT.
+void SetFlag(int flag, bool on);
+void SetCounter(int index, uint32_t value);              // -1 = leave; clamped by the game's own helpers
 
 }  // namespace Edits

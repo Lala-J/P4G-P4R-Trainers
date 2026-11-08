@@ -20,22 +20,6 @@ using namespace Theme;
 
 namespace {
 
-void PagePlanned(const char* milestone, const char* const* lines) {
-    SectionHeader("COMING UP");
-    ImGui::PushFont(g_fonts.bold);
-    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Yellow), "Arrives in milestone %s", milestone);
-    ImGui::PopFont();
-    for (const char* const* l = lines; *l; ++l) ImGui::TextWrapped("%s", *l);
-}
-
-#define PLANNED(fn, ms, ...)                                       \
-    void fn() {                                                    \
-        static const char* const lines[] = {__VA_ARGS__, nullptr}; \
-        PagePlanned(ms, lines);                                    \
-    }
-
-PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
-
 struct PageDef {
     const char* name;
     void (*draw)();
@@ -48,7 +32,7 @@ const PageDef kPages[] = {
     {"Personas", Pages::Personas, true},       {"Social Links", Pages::SocialLinks, true},
     {"Romance", Pages::Romance, true},           {"Case File", Pages::CaseFile, true},
     {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", Pages::LevelsExp, true},
-    {"Enemy Intel", Pages::EnemyIntel, true},         {"NG+ & Unlocks", DrawNgPlus, false},
+    {"Enemy Intel", Pages::EnemyIntel, true},         {"NG+ & Unlocks", Pages::NgPlus, true},
     {"Field & Dungeon", Pages::FieldDungeon, true},     {"Advanced", Pages::Advanced, true},
     {"Settings", Pages::Settings, true},       {"About", Pages::About, true},
 };

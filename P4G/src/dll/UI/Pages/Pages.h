@@ -16,6 +16,7 @@ void LevelsExp();
 void FieldDungeon();
 void Romance();
 void Today();
+void NgPlus();
 void IntelHud();
 void Settings();
 void About();

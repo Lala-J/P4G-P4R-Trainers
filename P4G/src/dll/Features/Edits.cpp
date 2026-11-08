@@ -6,6 +6,7 @@
 
 #include "Data/Stats.h"
 #include "Engine/Addresses.h"
+#include "Engine/FlowCaller.h"
 #include "Engine/GameState.h"
 #include "Engine/GameThread.h"
 #include "Engine/GameTypes.h"
@@ -132,6 +133,33 @@ void SetUnitHpSp(int charId, int hp, int sp) {
                             Natives::AddHP(v, int(oldHp) - int(v->hp));
                             Natives::AddSP(v, int(oldSp) - int(v->sp));
                         });
+    });
+}
+
+void SetFlag(int flag, bool on) {
+    if (flag < 0 || flag >= Game::kFlags) return;
+    GameThread::Post([flag, on] {
+        if (!CoreOk() || !HostCheck::GroupOk("flow")) return;
+        auto chk = Flow::Call(Flow::Fn::BIT_CHK, {flag});
+        if (!chk.ok || (chk.value != 0) == on) return;
+        Flow::Call(on ? Flow::Fn::BIT_ON : Flow::Fn::BIT_OFF, {flag});
+        Journal::Record(Fmt("Flag %d turned %s", flag, on ? "on" : "off"), [flag, on] {
+            Flow::Call(on ? Flow::Fn::BIT_OFF : Flow::Fn::BIT_ON, {flag});
+        });
+    });
+}
+
+void SetCounter(int index, uint32_t value) {
+    if (index < 0 || index >= Game::kCounters) return;
+    GameThread::Post([index, value] {
+        if (!CoreOk() || !HostCheck::GroupOk("flow")) return;
+        auto old = Flow::Call(Flow::Fn::GET_CNT, {index});
+        if (!old.ok || uint32_t(old.value) == value) return;
+        Flow::Call(Flow::Fn::SET_CNT, {index, int64_t(value)});
+        uint32_t prev = uint32_t(old.value);
+        Journal::Record(Fmt("Counter %d: %u → %u", index, prev, value), [index, prev] {
+            Flow::Call(Flow::Fn::SET_CNT, {index, int64_t(prev)});
+        });
     });
 }
 
