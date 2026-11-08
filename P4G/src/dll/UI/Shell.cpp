@@ -36,8 +36,6 @@ void PagePlanned(const char* milestone, const char* const* lines) {
 
 PLANNED(DrawToday, "M4b", "Everything you can do in the current time slot, and where.",
         "Priority: last chances > romance > links / hangouts > clubs / jobs > the rest.")
-PLANNED(DrawRomance, "M4c", "Pick a partner by portrait and follow a step-by-step route,",
-        "with every step hidden until you choose to reveal it.")
 PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
 
 struct PageDef {
@@ -50,7 +48,7 @@ const PageDef kPages[] = {
     {"Dashboard", Pages::Dashboard, true},     {"Today", DrawToday, false},
     {"Battle", Pages::BattlePage, true},             {"Inventory", Pages::Inventory, true},
     {"Personas", Pages::Personas, true},       {"Social Links", Pages::SocialLinks, true},
-    {"Romance", DrawRomance, false},           {"Case File", Pages::CaseFile, true},
+    {"Romance", Pages::Romance, true},           {"Case File", Pages::CaseFile, true},
     {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", Pages::LevelsExp, true},
     {"Enemy Intel", Pages::EnemyIntel, true},         {"NG+ & Unlocks", DrawNgPlus, false},
     {"Field & Dungeon", Pages::FieldDungeon, true},     {"Advanced", Pages::Advanced, true},

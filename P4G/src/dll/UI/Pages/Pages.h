@@ -14,6 +14,7 @@ void Advanced();
 void EnemyIntel();
 void LevelsExp();
 void FieldDungeon();
+void Romance();
 void IntelHud();
 void Settings();
 void About();

@@ -12,6 +12,7 @@
 #include "Features/BattleOverrides.h"
 #include "Features/Trace.h"
 #include "Hooks/InputHooks.h"
+#include "UI/Portraits.h"
 #include "UI/Shell.h"
 #include "UI/Theme.h"
 #include "Util/Log.h"
@@ -76,6 +77,7 @@ bool Init(IDXGISwapChain* sc) {
     Theme::Apply(Overlay::Scale());
     ImGui_ImplWin32_Init(g_hwnd);
     ImGui_ImplDX11_Init(g_dev, g_ctx);
+    Portraits::Init(g_dev);
     Input::InstallWndProc(g_hwnd);
 
     g_ready = true;
@@ -245,6 +247,7 @@ void BeginUnload() {
 
 void Shutdown() {
     if (g_ready) {
+        Portraits::Shutdown();
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
         ImGui::DestroyContext();
