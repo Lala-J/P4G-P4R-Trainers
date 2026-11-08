@@ -7,6 +7,7 @@
 #include "Data/Links.h"
 #include "Engine/GameState.h"
 #include "Engine/Names.h"
+#include "Features/SocialLinks.h"
 #include "Features/Spoilers.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -27,6 +28,7 @@ struct Row {
 };
 
 int g_filter = 0;  // 0 all, 1 started, 2 ready, 3 not started
+uint16_t g_selected = 0;  // link being managed (base id)
 
 std::vector<Row> BuildRows(const Game::Snapshot& s) {
     std::vector<Row> rows;
@@ -91,6 +93,11 @@ void DrawCard(const Row& r, float w) {
     }
 
     W::Title(r.info->person);
+    ImGui::SameLine(w - 90 * sc);
+    ImGui::PushID(r.info->id);
+    if (ImGui::SmallButton(g_selected == r.info->id ? "Close" : "Manage"))
+        g_selected = g_selected == r.info->id ? 0 : r.info->id;
+    ImGui::PopID();
     int rank = r.link ? r.link->rank : 0;
     W::Pips(rank, 10, accent, IM_COL32(255, 255, 255, 60));
     ImGui::SameLine();
@@ -110,6 +117,61 @@ void DrawCard(const Row& r, float w) {
         W::Dim("You picked the other club / link");
     }
     W::EndCard();
+}
+
+void ActionButton(const char* label, const Game::Snapshot& s, uint16_t id, Links::Action act,
+                  void (*run)(uint16_t)) {
+    Links::Assessment a = Links::Assess(s, id, act);
+    std::string why = a.Text();
+    if (!a.allowed) {
+        ImGui::BeginDisabled();
+        ImGui::Button(label);
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", why.c_str());
+        return;
+    }
+    if (W::RiskButton(label, a.risk, why.c_str())) run(id);
+}
+
+void DrawDetail(const Game::Snapshot& s, const std::vector<Row>& rows) {
+    const Row* r = nullptr;
+    for (const auto& x : rows)
+        if (x.info->id == g_selected) r = &x;
+    if (!r || !r->visible) return;
+    float sc = Overlay::Scale();
+    W::BeginCard("detail", ImVec2(0, 190 * sc), W::ArcanaColor(r->arcana));
+    ImGui::PushFont(g_fonts.bold);
+    ImGui::Text("%s", r->info->person);
+    ImGui::PopFont();
+    ImGui::SameLine();
+    std::string arc = Names::Arcana(r->arcana);
+    W::Dim("%s  ·  rank %d", arc.c_str(), r->link ? r->link->rank : 0);
+    if (r->link && !r->maxed)
+        ImGui::Text("%u of %u points toward the next rank", r->link->points, r->threshold);
+
+    ImGui::Spacing();
+    ActionButton("Ready at next hangout", s, r->info->id, Links::Action::Ready, Links::MakeReady);
+    ImGui::SameLine();
+    ActionButton("Rank up now", s, r->info->id, Links::Action::RankUp, Links::RankUpNow);
+    ImGui::SameLine();
+    ActionButton("Start link", s, r->info->id, Links::Action::Start, Links::Start);
+    if (r->link && !r->maxed) {
+        static int pts = 0;
+        static uint16_t ptsFor = 0;
+        if (ptsFor != r->info->id) pts = r->link->points, ptsFor = r->info->id;
+        ImGui::SetNextItemWidth(120 * sc);
+        ImGui::InputInt("##pts", &pts, 1, 5);
+        if (pts < 0) pts = 0;
+        if (pts > 999) pts = 999;
+        ImGui::SameLine();
+        if (W::RiskButton("Set points", Theme::Risk::Caution,
+                          "Sets this link's hidden points. Reaching the threshold means the next hangout "
+                          "ranks it up."))
+            Links::SetPoints(r->info->id, (uint16_t)pts);
+    }
+    W::Dim("Hover a button to see exactly what it does and why it carries its risk level.");
+    W::EndCard();
+    ImGui::Spacing();
 }
 
 }  // namespace
@@ -139,6 +201,8 @@ void SocialLinks() {
         if (on) ImGui::PopStyleColor(2);
     }
     ImGui::Spacing();
+
+    DrawDetail(s, rows);
 
     float sc = Overlay::Scale();
     int cols = W::Columns(300 * sc);

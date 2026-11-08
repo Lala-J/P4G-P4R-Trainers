@@ -80,8 +80,9 @@ bool InstallHooks() {
     g_on = GetFileAttributesW((Paths::DataDir() + L"\\debug-trace").c_str()) != INVALID_FILE_ATTRIBUTES;
     if (!g_on || !HostCheck::Get().supported) return false;
     LOGI("trace: enabled");
-    Hooks::Create("trace GetAffinityResult", reinterpret_cast<void*>(0x1400D35B0), &Aff_Hook, &o_Aff);
-    Hooks::Create("trace GetAffinityKnown", reinterpret_cast<void*>(0x1400993F0), &Known_Hook, &o_Known);
+    // (Affinity functions are hooked by BattleFx; one hook per function.)
+    (void)&Aff_Hook;
+    (void)&Known_Hook;
     return true;
 }
 

@@ -12,10 +12,12 @@ can write to the game.
     python p4gproc.py refs  <target> [section]   # rel32 call/jmp/lea/mov references to target
     python p4gproc.py find  "<text>" | hex:<bytes>       # search all readable memory
 
-Addresses accept 0x-hex or 'P4G.exe+0x1234'.
+Addresses accept 0x-hex or 'P4G.exe+0x1234'. Add --file to read P4G.exe on disk instead of the
+running game (code and static data only).
 """
 import ctypes
 import ctypes.wintypes as wt
+import os
 import re
 import struct
 import sys
@@ -62,6 +64,44 @@ def find_pid(name="P4G.exe"):
         ok = k32.Process32NextW(snap, ctypes.byref(e))
     k32.CloseHandle(snap)
     return pid
+
+
+class ExeFile:
+    """Same interface as Proc, but reads P4G.exe on disk (no running game needed).
+    Only sections stored in the file (code, data) are readable."""
+
+    def __init__(self, path=None):
+        import pefile
+        if path is None:
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "datamine"))
+            from cpk import find_game_dir
+            path = os.path.join(find_game_dir(), "P4G.exe")
+        self.f = open(path, "rb")
+        pe = pefile.PE(path, fast_load=True)
+        self.base = pe.OPTIONAL_HEADER.ImageBase
+        self.timestamp = pe.FILE_HEADER.TimeDateStamp
+        self.size_of_image = pe.OPTIONAL_HEADER.SizeOfImage
+        self.secmap = []
+        self.sections = {}
+        for sct in pe.sections:
+            n = sct.Name.rstrip(b"\x00").decode("latin-1")
+            va = self.base + sct.VirtualAddress
+            self.sections[n] = (va, sct.Misc_VirtualSize)
+            self.secmap.append((va, sct.SizeOfRawData, sct.PointerToRawData))
+
+    def read(self, addr, n):
+        for va, raw, ptr in self.secmap:
+            if va <= addr < va + raw:
+                self.f.seek(ptr + addr - va)
+                return self.f.read(min(n, va + raw - addr))
+        raise OSError(f"0x{addr:X} is not stored in the file")
+
+    try_read = Proc_try_read = None
+
+    def u8(self, a): return self.read(a, 1)[0]
+    def u16(self, a): return struct.unpack("<H", self.read(a, 2))[0]
+    def u32(self, a): return struct.unpack("<I", self.read(a, 4))[0]
+    def u64(self, a): return struct.unpack("<Q", self.read(a, 8))[0]
 
 
 class Proc:
@@ -223,11 +263,27 @@ def refs(p, target, section):
     return out
 
 
+def _exe_try_read(self, addr, n):
+    try:
+        return self.read(addr, n)
+    except OSError:
+        return None
+
+
+ExeFile.try_read = _exe_try_read
+ExeFile.addr = lambda self, text: Proc.addr(self, text)
+ExeFile.scan = lambda self, pattern, section=".shared", limit=50: Proc.scan(self, pattern, section, limit)
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__)
         return
-    p = Proc()
+    if "--file" in argv:
+        argv = [a for a in argv if a != "--file"]
+        p = ExeFile()
+    else:
+        p = Proc()
     cmd = argv[1]
     if cmd == "info":
         print(f"pid {p.pid}  base 0x{p.base:X}  timestamp 0x{p.timestamp:08X}  "

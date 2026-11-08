@@ -8,6 +8,7 @@
 #include "Engine/Names.h"
 #include "Engine/Natives.h"
 #include "Features/Battle.h"
+#include "Features/BattleOverrides.h"
 #include "Features/Edits.h"
 #include "Features/Spoilers.h"
 #include "UI/Overlay.h"
@@ -146,9 +147,47 @@ void BattlePage() {
         ++n;
     }
 
-    SectionHeader("MORE");
-    W::Dim("No ailments or knock-downs, enemies always miss, always crit, forced 1 More, the weakness "
-           "override and unlimited Persona swaps arrive in milestone M4c.");
+    auto& f = BattleFx::Opts();
+    bool fx = false;
+    auto toggle = [&](const char* label, bool* v, const char* help) {
+        fx |= ImGui::Checkbox(label, v);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", help);
+    };
+    SectionHeader("DEFENCE");
+    toggle("No knock-downs", &f.noDowns,
+           "Enemies can't hit the party's weaknesses or land critical hits on them, so nobody is knocked "
+           "down. Weakness damage is treated as normal damage.");
+    toggle("No ailments", &f.noAilments,
+           "Ailment skills are blocked (\"Block\"), and any ailment that still lands is cured at once.");
+    toggle("No instant kills", &f.noInstakill, "Hama and Mudo skills are blocked against the party.");
+    toggle("No stat penalties", &f.noDebuffs,
+           "Attack, defence, accuracy/evasion and critical penalties on the party are removed as soon as "
+           "they land. Your own buffs stay.");
+    toggle("Enemies always miss", &f.enemiesMiss,
+           "Every enemy attack on the party misses. Attacks the game marks as sure hits (some boss moves "
+           "that drive a story scene) still connect.");
+    SectionHeader("OFFENCE");
+    toggle("Party never misses", &f.partyHits, "The party's attacks are never dodged.");
+    toggle("Always critical", &f.partyCrits,
+           "Every party attack that can be critical is (physical skills). Magic still can't crit, and "
+           "bosses that can't be knocked down still can't.");
+    toggle("Weakness override", &f.weakness,
+           "Party attacks count as hitting the target's weakness: a fire skill on a shadow weak to "
+           "electricity lands as an electricity hit. The skill's own power is unchanged.");
+    if (f.weakness) {
+        ImGui::Indent();
+        toggle("Even when it has no weakness", &f.weaknessForce,
+               "Treat every hit as a weakness hit (×1.5), even on targets without one.");
+        ImGui::Unindent();
+    }
+    SectionHeader("CONTROL");
+    toggle("Unlimited Persona changes", &f.unlimitedSwap,
+           "Yu can change Persona as often as he likes during his turn.");
+    toggle("Shadows can't run away", &f.noFlee,
+           "A shadow that would flee waits instead (Golden Hands, cowardly shadows).");
+    if (fx) BattleFx::SaveOptions();
+    W::Dim("Every switch hooks the game's own rule for it, so the game still shows its normal "
+           "\"Miss\", \"Critical\" and \"Block\" results. Turning one off takes effect on the next action.");
 }
 
 }  // namespace Pages

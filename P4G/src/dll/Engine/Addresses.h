@@ -67,6 +67,17 @@ constexpr uintptr_t GetMaxSP = 0x1400CF790;      // thunk; paired with GetMaxHP 
 constexpr uintptr_t AddHP = 0x1400CFA20;         // void (Unit*, int delta): hp = clamp(hp+delta, 0, max) [DRV]
 constexpr uintptr_t AddSP = 0x1400CFA70;         // void (Unit*, int delta): sp = clamp(sp+delta, 0, max) [DRV]
 constexpr uintptr_t CmmCanRankUp = 0x1401AF130;  // u16 (u16 id)                   [DRV]
+
+// --- Battle rules (docs/data/battle.md) --------------------------------------------------
+constexpr uintptr_t HitResolver = 0x1400D4650;        // [DRV] accuracy / evasion
+constexpr uintptr_t CritResolver = 0x1400D4E40;       // [DRV][CT:qSleeP crit site inside]
+constexpr uintptr_t GetAffinityResult = 0x1400D35B0;  // [MOD:AquaRose7][DRV]
+constexpr uintptr_t GetAffinityKnown = 0x1400993F0;   // [MOD:AquaRose7][DRV]
+constexpr uintptr_t Rand = 0x140520960;               // u32 () game RNG [DRV]
+constexpr uintptr_t AiRunAway = 0x14006F7B0;          // AI 0x203F [DRV AI flow table 0x140AA9640]
+constexpr uintptr_t AiWait = 0x14006F820;             // AI 0x2040
+constexpr uintptr_t CanChangeToState = 0x140099180;   // [MOD:p4g64.quickBattleRestart sig][DRV]
+constexpr uintptr_t PersonaCount = 0x140096650;       // u16 (1, 0): Yu's Persona count [DRV]
 constexpr uintptr_t CmmGetRank = 0x1401AE7F0;    // u16 (u16 id)                   [DRV]
 
 enum class ProbeKind : uint8_t {
@@ -111,6 +122,22 @@ inline constexpr Probe kProbes[] = {
     {"EXP curve", "levels", ProbeKind::Code, McExpCurve, "00 00 00 00 1C 00 00 00 42 00 00 00", 0},
     {"cmmCanRankUp", "links", ProbeKind::Code, CmmCanRankUp, "48 89 5C 24 10 48 89 6C 24 18 56 48 83 EC 20 0F B7 F1", 0},
     {"GetMaxSP thunk", "battle", ProbeKind::Thunk, GetMaxSP, nullptr, 0},
+    {"Hit resolver", "battlefx", ProbeKind::Code, HitResolver,
+     "48 8B C4 48 89 58 08 48 89 68 10 48 89 70 20 66 44 89 40 18 57 41 54 41 55 41 56 41 57", 0},
+    {"Crit resolver", "battlefx", ProbeKind::Code, CritResolver,
+     "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 54 41 55 41 56 41 57 48 83 EC 40 48 8B F1", 0},
+    {"Crit roll", "battlefx", ProbeKind::Code, 0x1400D50E6, "45 3B C6 7C 0D 0F BA E7 1C", 0},
+    {"GetAffinityResult", "battlefx", ProbeKind::Code, GetAffinityResult,
+     "48 89 5C 24 18 55 57 41 54 41 56 41 57 48 83 EC 20 48 8B F9 44 0F BF F2", 0},
+    {"GetAffinityKnown", "battlefx", ProbeKind::Code, GetAffinityKnown,
+     "48 89 5C 24 08 57 48 83 EC 20 0F B7 D9 0F B7 FA", 0},
+    {"rand", "battlefx", ProbeKind::Code, Rand, "48 83 EC 28 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 0D", 0},
+    {"AI_RUN_AWAY", "battlefx", ProbeKind::Code, AiRunAway,
+     "40 53 48 83 EC 20 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 C9 48 8B 98 58 02 00 00 E8 ?? ?? ?? ?? 25 FF FF FF 00 4C 8D 0D ?? ?? ?? ?? 0F BA E8 1A", 0},
+    {"AI_WAIT", "battlefx", ProbeKind::Code, AiWait,
+     "40 53 48 83 EC 20 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 C9 48 8B 98 58 02 00 00 E8 ?? ?? ?? ?? 25 FF FF FF 00 4C 8D 0D ?? ?? ?? ?? 0D 00 00 00 05", 0},
+    {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,
+     "48 89 5C 24 10 57 48 83 EC 20 48 8B F9 0F B7 DA 48 8D 0D", 0},
     {"AddHP", "battle", ProbeKind::Code, AddHP,
      "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 8B DA 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B7 57 08", 0},
     {"AddSP", "battle", ProbeKind::Code, AddSP,

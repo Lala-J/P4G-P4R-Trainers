@@ -3,6 +3,7 @@
 #include "Engine/HostCheck.h"
 #include "Engine/SaveBackup.h"
 #include "Features/Battle.h"
+#include "Features/BattleOverrides.h"
 #include "Features/Inventory.h"
 #include "Features/Trace.h"
 #include "Hooks/D3D11Hook.h"
@@ -42,6 +43,7 @@ DWORD WINAPI MainThread(LPVOID) {
         bool in = Input::Install();
         if (hc.supported) {
             Battle::InstallHooks();
+            BattleFx::InstallHooks();
             InventoryFx::InstallHooks();
             Trace::InstallHooks();
         }
