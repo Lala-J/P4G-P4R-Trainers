@@ -15,6 +15,7 @@ void EnemyIntel();
 void LevelsExp();
 void FieldDungeon();
 void Romance();
+void Today();
 void IntelHud();
 void Settings();
 void About();

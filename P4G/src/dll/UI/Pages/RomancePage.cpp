@@ -50,20 +50,10 @@ void Card(int i, const Data::RomanceRoute& r, const Live& l, float w, bool met) 
     ImU32 frame = l.dating ? IM_COL32(240, 90, 150, 255) : (sel ? C::Yellow : (hov ? C::YellowDim : C::PanelHi));
     dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), IM_COL32(30, 28, 26, 255));
 
-    ImVec2 uv0, uv1;
-    ImTextureID tex = Portraits::Get(r.bustup, 1, r.bustupOutfit, &uv0, &uv1);
     float imgH = h - 46 * sc;
-    if (tex) {
-        float aspect = (uv1.y - uv0.y) * 1024.0f / 1024.0f;  // sheet is square
-        float iw = imgH / (aspect > 0.01f ? aspect : 1.0f);
-        if (iw > w) iw = w;
-        // centre horizontally, crop to the card
-        float cx = p.x + (w - iw) * 0.5f;
-        ImU32 tint = met ? IM_COL32(255, 255, 255, 255) : IM_COL32(0, 0, 0, 255);  // silhouette if unmet
-        dl->PushClipRect(p, ImVec2(p.x + w, p.y + imgH), true);
-        dl->AddImage(tex, ImVec2(cx, p.y + 6 * sc), ImVec2(cx + iw, p.y + imgH), uv0, uv1, tint);
-        dl->PopClipRect();
-    } else {
+    ImU32 tint = met ? IM_COL32(255, 255, 255, 255) : IM_COL32(0, 0, 0, 255);  // silhouette if unmet
+    if (!Portraits::DrawCover(dl, r.bustup, 1, r.bustupOutfit, ImVec2(p.x + 2, p.y + 2),
+                              ImVec2(p.x + w - 2, p.y + imgH), tint)) {
         const char* t = met ? r.name : "?";
         ImGui::PushFont(g_fonts.title);
         ImVec2 ts = ImGui::CalcTextSize(t);

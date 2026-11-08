@@ -20,6 +20,7 @@ struct Item {
     std::vector<uint8_t> rgba;
     int w = 0, h = 0;
     int top = 0, bottom = 0;  // rows that contain the figure
+    int left = 0, right = 0;  // columns that contain the figure
     ID3D11ShaderResourceView* srv = nullptr;
 };
 
@@ -54,14 +55,17 @@ void Decode(int key) {
         // Find the rows that hold the figure, to crop the empty space below it.
         tmp.top = tmp.h;
         tmp.bottom = 0;
-        for (int y = 0; y < tmp.h; ++y)
-            for (int x = 0; x < tmp.w; x += 4)
+        tmp.left = tmp.w;
+        tmp.right = 0;
+        for (int y = 0; y < tmp.h; y += 2)
+            for (int x = 0; x < tmp.w; x += 2)
                 if (tmp.rgba[(size_t(y) * tmp.w + x) * 4 + 3] > 16) {
                     if (y < tmp.top) tmp.top = y;
-                    tmp.bottom = y;
-                    break;
+                    if (y > tmp.bottom) tmp.bottom = y;
+                    if (x < tmp.left) tmp.left = x;
+                    if (x > tmp.right) tmp.right = x;
                 }
-        if (tmp.bottom <= tmp.top) ok = false;
+        if (tmp.bottom <= tmp.top || tmp.right <= tmp.left) ok = false;
     }
     std::lock_guard<std::mutex> lk(g_mu);
     Item& it = g_items[key];
@@ -71,6 +75,8 @@ void Decode(int key) {
         it.h = tmp.h;
         it.top = tmp.top;
         it.bottom = tmp.bottom;
+        it.left = tmp.left;
+        it.right = tmp.right;
         it.state = Item::Decoded;
     } else {
         it.state = Item::Failed;
@@ -119,7 +125,7 @@ void Shutdown() {
     g_dev = nullptr;
 }
 
-ImTextureID Get(int c, int e, int o, ImVec2* uv0, ImVec2* uv1) {
+ImTextureID Get(int c, int e, int o, ImVec2* uv0, ImVec2* uv1, float* aspect) {
     if (!g_dev) return ImTextureID{};
     int key = Key(c, e, o);
     std::lock_guard<std::mutex> lk(g_mu);
@@ -151,9 +157,33 @@ ImTextureID Get(int c, int e, int o, ImVec2* uv0, ImVec2* uv1) {
         it.state = it.srv ? Item::Ready : Item::Failed;
     }
     if (it.state != Item::Ready) return ImTextureID{};
-    if (uv0) *uv0 = ImVec2(0, float(it.top) / it.h);
-    if (uv1) *uv1 = ImVec2(1, float(it.bottom + 1) / it.h);
+    if (uv0) *uv0 = ImVec2(float(it.left) / it.w, float(it.top) / it.h);
+    if (uv1) *uv1 = ImVec2(float(it.right + 2) / it.w, float(it.bottom + 2) / it.h);
+    if (aspect) *aspect = float(it.right + 2 - it.left) / float(it.bottom + 2 - it.top);
     return reinterpret_cast<ImTextureID>(it.srv);
+}
+
+bool DrawCover(ImDrawList* dl, int c, int e, int o, ImVec2 mn, ImVec2 mx, ImU32 tint) {
+    ImVec2 uv0, uv1;
+    float fa = 1.0f;
+    ImTextureID tex = Get(c, e, o, &uv0, &uv1, &fa);
+    if (!tex) return false;
+    float bw = mx.x - mn.x, bh = mx.y - mn.y;
+    if (bw <= 0 || bh <= 0) return false;
+    float ta = bw / bh;  // area's aspect
+    if (fa < ta) {
+        // figure narrower than the area: full width, keep the top part of the figure
+        float keep = fa / ta;
+        uv1.y = uv0.y + (uv1.y - uv0.y) * keep;
+    } else {
+        // figure wider: full height, crop the sides evenly
+        float keep = ta / fa;
+        float du = (uv1.x - uv0.x) * (1 - keep) * 0.5f;
+        uv0.x += du;
+        uv1.x -= du;
+    }
+    dl->AddImage(tex, mn, mx, uv0, uv1, tint);
+    return true;
 }
 
 }  // namespace Portraits

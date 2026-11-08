@@ -34,8 +34,6 @@ void PagePlanned(const char* milestone, const char* const* lines) {
         PagePlanned(ms, lines);                                    \
     }
 
-PLANNED(DrawToday, "M4b", "Everything you can do in the current time slot, and where.",
-        "Priority: last chances > romance > links / hangouts > clubs / jobs > the rest.")
 PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
 
 struct PageDef {
@@ -45,7 +43,7 @@ struct PageDef {
 };
 
 const PageDef kPages[] = {
-    {"Dashboard", Pages::Dashboard, true},     {"Today", DrawToday, false},
+    {"Dashboard", Pages::Dashboard, true},     {"Today", Pages::Today, true},
     {"Battle", Pages::BattlePage, true},             {"Inventory", Pages::Inventory, true},
     {"Personas", Pages::Personas, true},       {"Social Links", Pages::SocialLinks, true},
     {"Romance", Pages::Romance, true},           {"Case File", Pages::CaseFile, true},
