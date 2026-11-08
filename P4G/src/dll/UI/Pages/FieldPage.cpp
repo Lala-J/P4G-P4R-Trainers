@@ -66,8 +66,43 @@ void FieldDungeon() {
     if (W::RiskButton("Previous floor", Risk::Caution, "Goes down one floor, as the stairs down would."))
         FieldQol::GotoRelativeFloor(-1);
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    const char* whyEsc = FieldQol::WhyNotEscape();
+    ImGui::BeginDisabled(whyEsc != nullptr);
+    if (W::RiskButton("Return to the entrance", Risk::Caution,
+                      "Leaves the dungeon the way a Goho-M does (same effect, no item used). The entrance then "
+                      "offers to continue from the floor you left, as after a Goho-M."))
+        FieldQol::ReturnToEntrance();
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!dungeon);
+    if (W::RiskButton("Fox: restore SP", Risk::Caution,
+                      "What the Fox does on a dungeon floor (a white flash, everyone's SP back to full), without "
+                      "the fee."))
+        FieldQol::FoxRecovery();
+    ImGui::EndDisabled();
     if (dungeon && whyDown && !whyUp) W::Dim("%s", whyDown);
     if (dungeon && FieldQol::CurrentFloorIdCached() >= 0) W::Dim("Floor id %d.", FieldQol::CurrentFloorIdCached());
+
+    SectionHeader("PARTY");
+    W::Dim("Who comes along (Yu plus up to three). Uses the game's own party functions, the ones entering "
+           "the TV world uses. Only members who have joined are listed.");
+    static const char* who[] = {"", "Yu", "Yosuke", "Chie", "Yukiko", "Rise", "Kanji", "Naoto", "Teddie"};
+    int listed = 0;
+    for (int c = 2; c <= 8; ++c) {
+        if (!FieldQol::PartyAvailable(c)) continue;
+        if (listed++) ImGui::SameLine();
+        bool in = FieldQol::InParty(c);
+        const char* why = FieldQol::WhyNotParty(c, !in);
+        ImGui::PushID(200 + c);
+        ImGui::BeginDisabled(why != nullptr);
+        bool v = in;
+        if (ImGui::Checkbox(who[c], &v)) FieldQol::SetInParty(c, v);
+        ImGui::EndDisabled();
+        if (why && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", why);
+        ImGui::PopID();
+    }
+    if (!listed) W::Dim("No one has joined yet.");
     ImGui::EndDisabled();
 
     SectionHeader("MINIMAP");

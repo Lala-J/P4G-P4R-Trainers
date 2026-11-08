@@ -319,4 +319,137 @@ void Tick() {
     if (done) LOGI("minimap: revealed %d cell(s), %d/%d shown", done, shown, total);
 }
 
+// --- Return to the entrance (dng_escape) ------------------------------------------------------
+namespace {
+struct DungeonRange {
+    int lo, hi, counter, entrance;
+};
+// dungeon.bf dng_escape: per dungeon (by floor id), the "continue from" counter and the entrance.
+constexpr DungeonRange kDungeons[] = {
+    {5, 20, 23, 5},     {20, 40, 24, 20},   {40, 60, 25, 40},   {60, 80, 26, 60},  {80, 100, 27, 80},
+    {100, 120, 28, 100}, {120, 140, 29, 120}, {140, 160, 30, 140}, {160, 180, 37, 160},
+};
+const DungeonRange* RangeOf(int floor) {
+    for (const auto& r : kDungeons)
+        if (floor >= r.lo && floor < r.hi) return &r;
+    return nullptr;
+}
+}  // namespace
+
+const char* WhyNotEscape() {
+    const char* why = nullptr;
+    if (!CanRunNow(&why)) return why;
+    if (!InDungeon()) return "Only inside a dungeon.";
+    int floor = CurrentFloorIdCached();
+    const DungeonRange* r = RangeOf(floor);
+    if (!r) return "Not on a dungeon floor.";
+    if (floor == r->entrance) return "You're already at the entrance.";
+    return nullptr;
+}
+
+void ReturnToEntrance() {
+    GameThread::Post([] {
+        if (WhyNotEscape()) return;
+        int floor = CurrentFloorId();
+        const DungeonRange* r = RangeOf(floor);
+        if (!r || floor == r->entrance) return;
+        // The game refuses here (its "can't escape" message) when flag 3165 is off and 3164 on.
+        if (!Bit(1024 + 2048 + 93) && Bit(1024 + 2048 + 92)) {
+            LOGI("return to entrance: the game doesn't allow leaving from here");
+            return;
+        }
+        int reached = floor;
+        auto s36 = Flow::Call(Flow::Fn::STAIRS_FOUND, {});
+        auto s37 = Flow::Call(Flow::Fn::FLOOR_OBJ6_FOUND, {});
+        if (s37.ok && s36.ok && s37.value == 0 && s36.value == 1) reached = floor + 1;
+        Flow::Step seq[8];
+        int n = 0;
+        if (Cnt(38) == 13) {
+            seq[n++] = {Flow::Fn::SET_CNT, {38, 14}, 2};
+            seq[n++] = {Flow::Fn::BIT_OFF, {1024 + 2048 + 46}, 1};
+            seq[n++] = {Flow::Fn::BIT_OFF, {1024 + 2048 + 47}, 1};
+        }
+        bool record = !(r->counter == 29 && (floor == 121 || floor == 122 || floor == 129));
+        if (record) seq[n++] = {Flow::Fn::SET_CNT, {r->counter, r->counter == 37 ? floor : reached}, 2};
+        // dng_escape plays TRAESTO_VISUAL here, but that function attaches its effect to the calling
+        // script's owner (context +0x240), which a trainer call doesn't have (it crashed the game).
+        // The stairs' fade stands in for the warp animation.
+        seq[n++] = {Flow::Fn::FADE, {1, 10}, 2};
+        seq[n++] = {Flow::Fn::FADE_SYNC, {}, 0};
+        seq[n++] = {Flow::Fn::CALL_DUNGEON, {r->entrance, 1}, 2};
+        if (!Flow::RunSequence(seq, n, "return to entrance")) return;
+        LOGI("return to entrance from floor %d (continue from %d)", floor, reached);
+        Journal::Record("Returned to the dungeon entrance (as a Goho-M)", nullptr);
+    });
+}
+
+// --- Party ------------------------------------------------------------------------------------
+namespace {
+int JoinFlag(int charId) {
+    static const int flag[9] = {-1, -1, 48, 49, 50, 52, 51, 54, 53};  // by character id
+    return charId >= 2 && charId <= 8 ? flag[charId] : -1;
+}
+}  // namespace
+
+bool PartyAvailable(int charId) {
+    int f = JoinFlag(charId);
+    return f >= 0 && Game::Current().Flag(f);
+}
+
+bool InParty(int charId) {
+    for (uint16_t id : Game::Current().party)
+        if (id == charId) return true;
+    return false;
+}
+
+const char* WhyNotParty(int charId, bool add) {
+    const char* why = nullptr;
+    if (!CanRunNow(&why)) return why;
+    if (!PartyAvailable(charId)) return "Hasn't joined yet.";
+    if (add) {
+        if (InParty(charId)) return "Already in the party.";
+        int n = 0;
+        for (uint16_t id : Game::Current().party) n += id != 0;
+        if (n >= 3) return "The party is full (Yu and three others).";
+    } else if (!InParty(charId)) {
+        return "Not in the party.";
+    }
+    return nullptr;
+}
+
+void SetInParty(int charId, bool in) {
+    GameThread::Post([charId, in] {
+        Game::Capture();
+        if (WhyNotParty(charId, in)) return;
+        Flow::Call(in ? Flow::Fn::ADD_PARTY : Flow::Fn::RM_PARTY, {charId});
+        static const char* n[] = {"", "Yu", "Yosuke", "Chie", "Yukiko", "Rise", "Kanji", "Naoto", "Teddie"};
+        Journal::Record(std::string(n[charId]) + (in ? " joined the party" : " left the party"), [charId, in] {
+            Flow::Call(in ? Flow::Fn::RM_PARTY : Flow::Fn::ADD_PARTY, {charId});
+        });
+    });
+}
+
+// --- The Fox --------------------------------------------------------------------------------
+void FoxRecovery() {
+    GameThread::Post([] {
+        const char* why = nullptr;
+        if (!CanRunNow(&why) || !InDungeon()) return;
+        Flow::Step seq[12];
+        int n = 0;
+        seq[n++] = {Flow::Fn::FADE, {1, 5}, 2};
+        seq[n++] = {Flow::Fn::SET_FADE_COLOUR, {255, 255, 255}, 3};
+        seq[n++] = {Flow::Fn::FADE_SYNC, {}, 0};
+        int members[4] = {1, 0, 0, 0};
+        int m = 1;
+        for (uint16_t id : Game::Current().party)
+            if (id && m < 4) members[m++] = id;
+        for (int i = 0; i < m; ++i) {
+            auto tot = Flow::Call(Flow::Fn::GET_TOT_SP, {members[i]});
+            if (tot.ok) seq[n++] = {Flow::Fn::SET_SP, {members[i], tot.value}, 2};
+        }
+        seq[n++] = {Flow::Fn::FADE_BACK, {15}, 1};
+        if (Flow::RunSequence(seq, n, "fox recovery")) Journal::Record("The Fox restored the party's SP", nullptr);
+    });
+}
+
 }  // namespace FieldQol

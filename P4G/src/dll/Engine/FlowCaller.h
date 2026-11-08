@@ -7,6 +7,9 @@
 // values at +0x50+slot*8 (slot = sp - i), and writes its result at +0x1D0 (type at +0x53).
 // FlowCaller fills a private context that way, points the global at it for the duration of the
 // call, and restores it. Game thread only (scripts run there, between frames).
+//
+// The private context has no owner (the field/event object at +0x240 of a real script context).
+// Functions that attach work to the calling script's owner (e.g. TRAESTO_VISUAL) can't be called.
 
 #include <cstdint>
 #include <initializer_list>
@@ -66,6 +69,15 @@ constexpr uint16_t FADE = 0x0016;
 constexpr uint16_t FADE_SYNC = 0x0017;
 constexpr uint16_t CALL_FIELD = 0x0030;
 constexpr uint16_t NS_SAVE = 0x0057;
+constexpr uint16_t ADD_PARTY = 0x0038;       // (character id)
+constexpr uint16_t RM_PARTY = 0x0039;
+constexpr uint16_t SET_FADE_COLOUR = 0x0024;
+constexpr uint16_t FADE_BACK = 0x0015;
+constexpr uint16_t GET_TOT_SP = 0x0062;
+constexpr uint16_t SET_SP = 0x0063;
+constexpr uint16_t TRAESTO_VISUAL = 0x1028;  // DON'T CALL: needs the calling script's owner (context +0x240)
+constexpr uint16_t STAIRS_FOUND = 0x1036;     // FLD_FUNCTION_0036: the up stairs are on an explored cell
+constexpr uint16_t FLOOR_OBJ6_FOUND = 0x1037; // FLD_FUNCTION_0037: (object type 6 on an explored cell)
 constexpr uint16_t SET_EQUIPMENT = 0x0055;  // (member, slot 0 weapon 1 armour 2 accessory 3 outfit, item)
 constexpr uint16_t GET_EQUIPMENT_ID = 0x0054;
 constexpr uint16_t SHIROKU_PUB = 0x007E;

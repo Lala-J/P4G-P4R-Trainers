@@ -18,6 +18,20 @@ int CurrentFloorIdCached();
 const char* WhyNotChangeFloor(int delta);  // null when the floor can change now
 void GotoRelativeFloor(int delta);      // dungeon only: +1 next floor, -1 previous (the stairs' own steps)
 
+// Leave the dungeon for its entrance, as a Goho-M / Escape does (dungeon.bf dng_escape): the
+// entrance then offers to continue from the floor you left, exactly as after a Goho-M.
+const char* WhyNotEscape();
+void ReturnToEntrance();
+
+// Party members, with the game's own ADD_PARTY / RM_PARTY (what entering the TV world uses).
+bool PartyAvailable(int charId);       // has joined
+bool InParty(int charId);
+const char* WhyNotParty(int charId, bool add);
+void SetInParty(int charId, bool in);
+
+// The Fox's SP recovery (kitsune.bf recovery_SP), without the fee.
+void FoxRecovery();
+
 // Minimap auto-reveal: every walkable cell of the current floor is passed to the game's own
 // per-cell reveal (what walking into it does), so the whole floor shows on the minimap.
 bool RevealMapAvailable();              // host probes passed
