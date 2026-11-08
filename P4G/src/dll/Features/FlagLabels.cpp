@@ -9,6 +9,8 @@
 #include "Data/Links.h"
 #include "Data/Romance.h"
 #include "Data/Today.h"
+#include "Engine/Names.h"
+#include "Features/PersonaStock.h"
 
 namespace FlagLabels {
 
@@ -76,15 +78,41 @@ const std::map<int, Label>& Table() {
     return t;
 }
 
+// The game's own ultimate-unlock flags (read live once the table is loaded).
+void AddUnlockFlags() {
+    static bool done = false;
+    if (done) return;
+    int n = PersonaStock::UnlockFlagCount();
+    if (n <= 0) return;
+    done = true;
+    auto& t = const_cast<std::map<int, Label>&>(Table());
+    for (int i = 0; i < n; ++i) {
+        int flag;
+        uint16_t id;
+        if (!PersonaStock::UnlockEntry(i, &flag, &id) || flag < 0) continue;
+        std::string nm = Names::PersonaOr(id);
+        bool spoiler = !PersonaStock::ArcanaVisible(PersonaStock::Describe(id).arcana) ||
+                       PersonaStock::ArcanaLink(PersonaStock::Describe(id).arcana) != 0;
+        std::string text = Fmt("%s can be fused (its link was maxed)", nm.c_str());
+        auto it = t.find(flag);
+        if (it == t.end()) t[flag] = {text, spoiler};
+        else it->second.text += " / " + text;
+    }
+}
+
 }  // namespace
 
 const Label* Flag(int n) {
+    AddUnlockFlags();
     const auto& t = Table();
     auto it = t.find(n);
     return it == t.end() ? nullptr : &it->second;
 }
 
-int LabelledFlagCount() { return int(Table().size()); }
+int LabelledFlagCount() {
+    AddUnlockFlags();
+    return int(Table().size());
+}
 
 const char* Counter(int n) {
     switch (n) {

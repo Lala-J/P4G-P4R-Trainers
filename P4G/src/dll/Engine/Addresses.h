@@ -99,6 +99,9 @@ constexpr uintptr_t StockCapacity = 0x1400D7630;     // int (): 6 / 8 / 10 / 12 
 constexpr uintptr_t CompendiumRegister = 0x140242DF0;  // void (const Persona*) [DRV]
 constexpr uintptr_t SummonPrice = 0x140245630;       // int (const Persona*): the Velvet Room's fee [DRV]
 constexpr uintptr_t pCompendium = 0x1411A7038;       // -> SaveBlock+0x2510, Persona[256] by id [DRV]
+constexpr uintptr_t PersonaUnlocked = 0x140240420;   // int (u16 id): ultimates need their unlock flag [DRV]
+constexpr uintptr_t pUnlockTable = 0x1411A7858;      // -> {i32 flag; i16 persona; u16 mode}[count] [DRV]
+constexpr uintptr_t UnlockCount = 0x1411A7860;       // u32 [DRV]
 // --- Dungeon minimap (docs/data/minimap.md) -------------------------------------------------
 constexpr uintptr_t MinimapGrid = 0x1411AB39C;     // cell[24][16] x 16 B, index major*16+minor; +0: 1 walkable, 2 wall [MOD:AquaRose7][DRV]
 constexpr uintptr_t pMinimapSeen = 0x1451EC580;    // -> u16[24]: bit `minor` of [major] = drawn on the minimap [DRV]
@@ -196,6 +199,8 @@ inline constexpr Probe kProbes[] = {
     {"SummonPrice", "stock", ProbeKind::Code, SummonPrice,
      "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 56 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F BE 43 21", 0},
     {"Compendium pointer", "stock", ProbeKind::PtrEq, pCompendium, nullptr, SaveBlock + 0x2510},
+    {"PersonaUnlocked", "fusion", ProbeKind::Code, PersonaUnlocked,
+     "48 89 5C 24 08 57 48 83 EC 20 0F B7 D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 44 8B 15 ?? ?? ?? ?? 45 33 C9 BF 01 00 00 00", 0},
     {"Minimap reveal-cell", "minimap", ProbeKind::Code, MinimapRevealCell,
      "48 89 5C 24 10 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 30 0F B6 D9 48 8D 0D ?? ?? ?? ?? 0F B6 FA", 0},
     {"Minimap seen-bits use", "minimap", ProbeKind::Code, 0x14042FB28, "4C 8B 0D 51 CA DB 04 48 8D 4B F0", 0},

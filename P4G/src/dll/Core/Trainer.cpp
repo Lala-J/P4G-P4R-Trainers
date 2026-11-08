@@ -7,6 +7,7 @@
 #include "Features/BattleOverrides.h"
 #include "Features/Inventory.h"
 #include "Features/Levels.h"
+#include "Features/PersonaStock.h"
 #include "Features/Trace.h"
 #include "Hooks/D3D11Hook.h"
 #include "Hooks/Hook.h"
@@ -47,6 +48,7 @@ DWORD WINAPI MainThread(LPVOID) {
             Battle::InstallHooks();
             BattleFx::InstallHooks();
             Levels::InstallHooks();
+            PersonaStock::InstallHooks();
             AutoAdvance::InstallHooks();
             InventoryFx::InstallHooks();
             Trace::InstallHooks();

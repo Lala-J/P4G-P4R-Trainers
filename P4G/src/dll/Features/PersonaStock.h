@@ -56,4 +56,15 @@ void Register(int slot);       // save this stock Persona's current form to the 
 void FillCompendium();
 int CompendiumGaps();
 
+// Velvet Room rule: ultimate Personas can be fused before their arcana's link is maxed. The game
+// keeps a table of {unlock flag, Persona}; this answers "unlocked" for every entry.
+bool UnlockOverrideAvailable();
+bool UltimatesUnlocked();
+void SetUltimatesUnlocked(bool on);
+bool InstallHooks();
+
+// The game's unlock table, for labels: flag -> Persona id (0 if none).
+int UnlockFlagCount();
+bool UnlockEntry(int i, int* flag, uint16_t* persona);
+
 }  // namespace PersonaStock

@@ -1,5 +1,6 @@
 #include "Features/PersonaStock.h"
 
+#include <atomic>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
@@ -14,6 +15,8 @@
 #include "Engine/SigScan.h"
 #include "Features/Journal.h"
 #include "Features/Spoilers.h"
+#include "Hooks/Hook.h"
+#include "Util/Settings.h"
 #include "Util/Log.h"
 
 namespace PersonaStock {
@@ -296,6 +299,52 @@ void FillCompendium() {
                 for (const auto& e : before) c2[e.first] = e.second;
         });
     });
+}
+
+// --- Velvet Room rule override ------------------------------------------------------------------
+namespace {
+using Unlocked_t = int (*)(uint16_t);
+Unlocked_t o_Unlocked = nullptr;
+std::atomic<bool> g_ultimates{false};
+
+int Unlocked_Hook(uint16_t id) {
+    Hooks::Guard g;
+    if (g_ultimates.load(std::memory_order_relaxed)) return 1;
+    return o_Unlocked(id);
+}
+}  // namespace
+
+bool UnlockOverrideAvailable() { return HostCheck::GroupOk("fusion") && o_Unlocked != nullptr; }
+bool UltimatesUnlocked() { return g_ultimates.load(); }
+
+void SetUltimatesUnlocked(bool on) {
+    g_ultimates = on;
+    Settings::SetInt("fusion", "ultimates", on ? 1 : 0);
+    if (UnlockOverrideAvailable())  // the game's own answer, through the hook (Loki, Fool's ultimate)
+        LOGI("fusion: ultimates %s; Loki unlocked = %d", on ? "unlocked" : "normal",
+             reinterpret_cast<int (*)(uint16_t)>(Addr::PersonaUnlocked)(4));
+}
+
+bool InstallHooks() {
+    g_ultimates = Settings::GetInt("fusion", "ultimates", 0) != 0;
+    if (!HostCheck::GroupOk("fusion")) return false;
+    return Hooks::Create("PersonaUnlocked", reinterpret_cast<void*>(Addr::PersonaUnlocked), &Unlocked_Hook,
+                         &o_Unlocked);
+}
+
+int UnlockFlagCount() {
+    if (!HostCheck::GroupOk("fusion") || !Sig::Readable(Addr::UnlockCount, 4)) return 0;
+    uint32_t n = *reinterpret_cast<uint32_t*>(Addr::UnlockCount);
+    return n <= 256 ? int(n) : 0;
+}
+
+bool UnlockEntry(int i, int* flag, uint16_t* persona) {
+    if (i < 0 || i >= UnlockFlagCount() || !Sig::Readable(Addr::pUnlockTable, 8)) return false;
+    auto t = *reinterpret_cast<uintptr_t*>(Addr::pUnlockTable);
+    if (!t || !Sig::Readable(t + i * 8, 8)) return false;
+    *flag = *reinterpret_cast<int32_t*>(t + i * 8);
+    *persona = *reinterpret_cast<uint16_t*>(t + i * 8 + 4);
+    return true;
 }
 
 }  // namespace PersonaStock

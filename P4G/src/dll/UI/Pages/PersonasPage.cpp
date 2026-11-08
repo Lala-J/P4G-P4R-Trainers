@@ -406,6 +406,21 @@ void Personas() {
     if (PersonaStock::Available()) DrawStockManager(s);
     DrawGive(s);
 
+    SectionHeader("VELVET ROOM RULES");
+    if (!PersonaStock::UnlockOverrideAvailable()) {
+        W::Dim("Unavailable on this game build (a host check failed).");
+    } else {
+        bool on = PersonaStock::UltimatesUnlocked();
+        if (ImGui::Checkbox("Fuse ultimate Personas before their link is maxed", &on))
+            PersonaStock::SetUltimatesUnlocked(on);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Each arcana's strongest Persona normally unlocks when that social link reaches "
+                              "its max rank. With this on, the Velvet Room treats them all as unlocked. Turning "
+                              "it off restores the normal rule; Personas you already fused stay.");
+        W::Dim("Other fusion rules (Yu's level as the cap, special-fusion recipes) are unchanged. Use "
+               "\"Get it\" above for a Persona above your level.");
+    }
+
     SectionHeader("PARTY MEMBERS");
     W::Dim("A party member's level is their Persona's level.");
     n = 0;
