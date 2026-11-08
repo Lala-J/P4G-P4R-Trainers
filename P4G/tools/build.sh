@@ -23,8 +23,10 @@ BUILD_ID="$BUILD_ID-$CFG"
 GEN="$OUT/gen"
 GEN_H="$GEN/BuildId.h"
 mkdir -p "$GEN"
-NEW_GEN="#define P4G_BUILD \"$BUILD_ID\""
-[ -f "$GEN_H" ] && [ "$(cat "$GEN_H")" = "$NEW_GEN" ] || echo "$NEW_GEN" > "$GEN_H"
+VERSION="$(tr -d ' \r\n' < VERSION 2>/dev/null || echo 0.0.0)"
+NEW_GEN="#define P4G_BUILD \"$BUILD_ID\"
+#define P4G_VERSION \"$VERSION\""
+[ -f "$GEN_H" ] && [ "$(cat "$GEN_H")" = "$NEW_GEN" ] || printf '%s\n' "$NEW_GEN" > "$GEN_H"
 
 if [ "$CFG" = "debug" ]; then
     OPT="-Od -Zi -D_DEBUG -DP4G_DEBUG"
@@ -49,7 +51,7 @@ compile() {
     local src=$1; shift
     local o; o=$(obj_of "$src")
     if [ -f "$o" ] && [ "$o" -nt "$src" ] && { [ -z "$NEWEST_H" ] || [ "$o" -nt "$NEWEST_H" ] || [[ "$src" == third_party/* ]]; } \
-       && ! { [[ "$src" == */Core/Trainer.cpp ]] && [ "$GEN_H" -nt "$o" ]; }; then
+       && ! { [[ "$src" == */Core/Trainer.cpp || "$src" == */injector/main.cpp ]] && [ "$GEN_H" -nt "$o" ]; }; then
         return 0
     fi
     if ! "$CL_EXE" -c "$@" -Fo:"$o" -Fd:"$OBJ/vc.pdb" -FS "$src" > "$o.txt" 2>&1; then
@@ -82,7 +84,7 @@ DLL_SRC=$(find src/dll -name '*.cpp' | sort)
 INJ_SRC=$(find src/injector -name '*.cpp' | sort)
 PROXY_SRC=$(find src/proxy -name '*.cpp' | sort)
 
-echo "=== compile ($CFG, $BUILD_ID) ==="
+echo "=== compile v$VERSION ($CFG, $BUILD_ID) ==="
 run_parallel $CXX_3P -- $IMGUI_SRC
 run_parallel $C_3P -- $MINHOOK_SRC
 run_parallel $CXX_OWN -- $DLL_SRC $INJ_SRC $PROXY_SRC src/tests/selftest.cpp
@@ -96,7 +98,7 @@ objs() { for s in "$@"; do obj_of "$s"; done; }
 if [ $fail -eq 0 ]; then
     echo "=== link P4GTrainer.dll ==="
     "$LINK_EXE" -nologo -DLL -DEBUG -OPT:REF -OPT:ICF -MACHINE:X64 \
-        -OUT:"$OUT/P4GTrainer.dll" -PDB:"$OUT/P4GTrainer.pdb" \
+        -OUT:"$OUT/P4GTrainer.dll" -PDB:"$OUT/P4GTrainer.pdb" -PDBALTPATH:%_PDB% \
         $(objs $DLL_SRC $IMGUI_SRC $MINHOOK_SRC) \
         user32.lib kernel32.lib gdi32.lib shell32.lib ole32.lib advapi32.lib \
         d3d11.lib dxgi.lib d3dcompiler.lib dinput8.lib dxguid.lib imm32.lib dwmapi.lib \
@@ -105,11 +107,14 @@ if [ $fail -eq 0 ]; then
 
     echo "=== link P4GTrainer.exe (injector) ==="
     "$LINK_EXE" -nologo -DEBUG -MACHINE:X64 -SUBSYSTEM:CONSOLE \
-        -OUT:"$OUT/P4GTrainer.exe" -PDB:"$OUT/P4GTrainer_exe.pdb" \
+        -OUT:"$OUT/P4GTrainer.exe" -PDB:"$OUT/P4GTrainer_exe.pdb" -PDBALTPATH:%_PDB% \
         $(objs $INJ_SRC) kernel32.lib user32.lib shell32.lib ole32.lib advapi32.lib || fail=1
 
     echo "=== link dinput8.dll (game-folder autoloader) ==="
-    "$LINK_EXE" -nologo -DLL -DEBUG -OPT:REF -MACHINE:X64         -OUT:"$OUT/dinput8.dll" -PDB:"$OUT/dinput8.pdb"         $(objs $PROXY_SRC) kernel32.lib user32.lib         | grep -v "^ *Creating library" || true
+    "$LINK_EXE" -nologo -DLL -DEBUG -OPT:REF -MACHINE:X64 \
+        -OUT:"$OUT/dinput8.dll" -PDB:"$OUT/dinput8.pdb" -PDBALTPATH:%_PDB% \
+        $(objs $PROXY_SRC) kernel32.lib user32.lib \
+        | grep -v "^ *Creating library" || true
     [ -f "$OUT/dinput8.dll" ] && [ "$OUT/dinput8.dll" -nt "$(obj_of $PROXY_SRC)" ] || fail=1
 
     echo "=== self-test ==="
@@ -146,4 +151,4 @@ cp -f "$REPO_ROOT/README.md" "$REPO_ROOT/LICENSE" "$DIST/"
 echo
 echo "=== dist ==="
 ls -la "$DIST"
-echo "BUILD OK ($BUILD_ID)"
+echo "BUILD OK v$VERSION ($BUILD_ID)"

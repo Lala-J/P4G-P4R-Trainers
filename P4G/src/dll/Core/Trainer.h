@@ -10,6 +10,7 @@ void Start(HMODULE self);
 void RequestUnload();
 
 const char* BuildId();
+const char* Version();   // semantic version, from P4G/VERSION
 std::wstring BackupDir();     // this session's save backup (empty if none)
 std::wstring LogPath();
 bool HooksInstalled();

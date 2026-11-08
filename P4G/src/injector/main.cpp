@@ -19,6 +19,13 @@
 #include <string>
 #include <vector>
 
+#if __has_include("BuildId.h")
+#include "BuildId.h"
+#endif
+#ifndef P4G_VERSION
+#define P4G_VERSION "0.0.0"
+#endif
+
 namespace {
 
 constexpr int kSlots = 6;
@@ -189,6 +196,7 @@ bool Inject(DWORD pid, HANDLE proc, const std::wstring& dll) {
 }  // namespace
 
 int wmain(int argc, wchar_t** argv) {
+    Say(L"P4G Trainer v%hs", P4G_VERSION);
     bool wait = false, reload = false, eject = false;
     std::wstring dll;
     for (int i = 1; i < argc; ++i) {

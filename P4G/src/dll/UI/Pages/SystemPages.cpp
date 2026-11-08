@@ -172,7 +172,7 @@ void Settings() {
 
 void About() {
     SectionHeader("P4G TRAINER");
-    ImGui::Text("Build %s", Trainer::BuildId());
+    ImGui::Text("Version %s  (build %s)", Trainer::Version(), Trainer::BuildId());
     ImGui::TextWrapped(
         "An in-game trainer for Persona 4 Golden (Steam, 64-bit). It changes the game through the "
         "game's own functions wherever possible and warns before anything that could affect the "

@@ -17,10 +17,12 @@ guessing. The Dashboard says so.
 
 #### Install
 
-Download the latest release, or build it yourself (Part 2). Then pick one:
+Download `P4GTrainer-vX.Y.Z.zip` from the
+[latest release](https://github.com/Lala-J/P4G-P4R-Trainers/releases/latest) (or build it
+yourself, Part 2). The zip has an `Autoload` folder and a `Manual` folder; pick one:
 
-**A. Drop-in (starts with the game every time).** Copy `dinput8.dll` and `P4GTrainer.dll` into
-the game folder (Steam → Persona 4 Golden → Manage → Browse local files), next to `P4G.exe`.
+**A. Autoload (starts with the game every time).** Copy `dinput8.dll` and `P4GTrainer.dll`
+from `Autoload` into the game folder (Steam → Persona 4 Golden → Manage → Browse local files), next to `P4G.exe`.
 Start the game as usual; the trainer loads by itself a few seconds after the window appears.
 - `dinput8.dll` is a small loader. The game loads it in place of the Windows DLL of that name;
   it passes everything through to the real one, then loads `P4GTrainer.dll` from the same folder.
@@ -30,8 +32,9 @@ Start the game as usual; the trainer loads by itself a few seconds after the win
   trainer's Settings page (takes effect next start). To uninstall: remove the two files.
 - Steam's "verify integrity of game files" doesn't touch them (they aren't part of the game).
 
-**B. On demand.** Put `P4GTrainer.exe` and `P4GTrainer.dll` in any folder, together. Start the
-game, then run `P4GTrainer.exe` once you're at the title screen or in game.
+**B. Manual (on demand).** Put `P4GTrainer.exe` and `P4GTrainer.dll` from `Manual` in any
+folder, together. Start the game, then run `P4GTrainer.exe` once you're at the title screen or
+in game.
 - `P4GTrainer.exe --wait` waits for the game to start and then loads.
 - `P4GTrainer.exe --eject` unloads the trainer; `--reload` swaps in a newer build (this also works
   with the drop-in).
@@ -172,6 +175,18 @@ git config core.hooksPath .githooks
   virtualised code. Functions that jump into `.arch` may be called but are never hooked.
 - **Threads.** The UI never touches game memory directly. Changes are queued and applied on
   the game's own thread.
+
+### Releases
+
+Versions follow [semantic versioning](https://semver.org/); the current one is in
+`P4G/VERSION` and is shown on the trainer's About page, in its log and by `P4GTrainer.exe`.
+
+1. Bump `P4G/VERSION` (patch for fixes, minor for new features) and commit.
+2. `bash P4G/tools/package.sh` builds a release and writes `P4G/build/package/`:
+   `P4GTrainer-vX.Y.Z.zip` (the `Autoload` and `Manual` folders, `INSTALL.txt`, README, LICENSE)
+   and `P4GTrainer-vX.Y.Z-symbols.zip` (the matching `.pdb` files, for reading crash reports).
+   It refuses uncommitted changes and fails if a binary contains a local path.
+3. Tag `vX.Y.Z`, push, and attach both zips to a GitHub release.
 
 ### Contributing
 
