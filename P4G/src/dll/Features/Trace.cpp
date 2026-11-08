@@ -3,13 +3,17 @@
 #include <windows.h>
 #include <intrin.h>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <string>
 
 #include "Engine/Addresses.h"
 #include "Engine/FlowCaller.h"
+#include "Engine/GameState.h"
 #include "Engine/GameTypes.h"
 #include "Engine/HostCheck.h"
 #include "Engine/SigScan.h"
+#include "Features/FieldQol.h"
 #include "Hooks/Hook.h"
 #include "Util/Log.h"
 #include "Util/Paths.h"

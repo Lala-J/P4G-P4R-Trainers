@@ -94,7 +94,12 @@ uint32_t Aff_Hook(Game::Unit* u, short elem) {
         for (short e = 0; e <= 7; ++e) {
             if (e == 5) continue;  // Almighty is never a weakness
             uint32_t w = o_Aff(u, e);
-            if (w & kWeak) return w;  // treated exactly as a hit with that element
+            if (w & kWeak) {  // treated exactly as a hit with that element
+                if (Trace::Enabled())
+                    LOGI("trace: weakness override: unit %p element %d (0x%08X) -> weak element %d (0x%08X)",
+                         (void*)u, elem, r, e, w);
+                return w;
+            }
         }
         if (g_o.weaknessForce) return (r & ~(kResist | kNull | 0x06000000u) & 0xFFFF0000u) | kWeak | 150u;
     }
@@ -104,7 +109,9 @@ uint32_t Aff_Hook(Game::Unit* u, short elem) {
 int Flee_Hook() {
     Hooks::Guard g;
     // The shadow waits instead: same script argument, AI_WAIT's own code.
-    if (g_o.noFlee && g_wait) return g_wait();
+    bool block = g_o.noFlee && g_wait;
+    if (Trace::Enabled()) LOGI("trace: AI_RUN_AWAY called by a shadow's AI -> %s", block ? "waits instead" : "runs away");
+    if (block) return g_wait();
     return o_Flee();
 }
 

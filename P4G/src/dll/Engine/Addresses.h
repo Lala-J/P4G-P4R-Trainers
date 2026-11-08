@@ -106,6 +106,7 @@ constexpr uintptr_t UnlockCount = 0x1411A7860;       // u32 [DRV]
 constexpr uintptr_t MinimapGrid = 0x1411AB39C;     // cell[24][16] x 16 B, index major*16+minor; +0: 1 walkable, 2 wall [MOD:AquaRose7][DRV]
 constexpr uintptr_t pMinimapSeen = 0x1451EC580;    // -> u16[24]: bit `minor` of [major] = drawn on the minimap [DRV]
 constexpr uintptr_t MinimapRevealCell = 0x14042FA80;  // void (u8 minor, u8 major): the game's own per-cell reveal [DRV]
+constexpr uintptr_t FieldCollisionStep = 0x14032A200;  // (object, room, ...): crashes on a null room [DRV]
 constexpr uintptr_t pFieldRoot = 0x140EC0FF0;      // ->+0x250->+0x48->+0x18 = player; +0x360 x, +0x368 z [DRV]
 constexpr uintptr_t pEnemyTable = 0x140EC0920;        // -> 0x3C per enemy id [MOD:AquaRose7][DRV]
 constexpr uintptr_t pEnemyAffinity = 0x140EC0970;     // -> u16[16] per enemy id: hi byte flags [DRV]
@@ -201,6 +202,8 @@ inline constexpr Probe kProbes[] = {
     {"Compendium pointer", "stock", ProbeKind::PtrEq, pCompendium, nullptr, SaveBlock + 0x2510},
     {"PersonaUnlocked", "fusion", ProbeKind::Code, PersonaUnlocked,
      "48 89 5C 24 08 57 48 83 EC 20 0F B7 D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 44 8B 15 ?? ?? ?? ?? 45 33 C9 BF 01 00 00 00", 0},
+    {"Field collision step", "fieldguard", ProbeKind::Code, FieldCollisionStep,
+     "48 8B C4 48 89 58 08 55 56 57 41 56 41 57 48 8D 68 B1 48 81 EC C0 00 00 00 0F 29 70 C8 48 8B F1", 0},
     {"Minimap reveal-cell", "minimap", ProbeKind::Code, MinimapRevealCell,
      "48 89 5C 24 10 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 30 0F B6 D9 48 8D 0D ?? ?? ?? ?? 0F B6 FA", 0},
     {"Minimap seen-bits use", "minimap", ProbeKind::Code, 0x14042FB28, "4C 8B 0D 51 CA DB 04 48 8D 4B F0", 0},

@@ -1,6 +1,7 @@
 #include <imgui.h>
 
 #include "Features/AutoAdvance.h"
+#include "Features/FieldGuard.h"
 #include "Features/FieldQol.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -48,6 +49,14 @@ void FieldDungeon() {
 
     SectionHeader("DUNGEON");
     W::Dim("While exploring a dungeon:");
+    if (dungeon && FieldGuard::LeaderOutsideRoom()) {
+        ImGui::PushTextWrapPos(0);
+        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Orange),
+                           "The party is stuck outside the floor's rooms (for example behind the end of a "
+                           "staircase). The game would crash here; the trainer is holding it off. Use Next or "
+                           "Previous floor below, or a Goho-M, to get out.");
+        ImGui::PopTextWrapPos();
+    }
     const char* whyUp = FieldQol::WhyNotChangeFloor(1);
     const char* whyDown = FieldQol::WhyNotChangeFloor(-1);
     ImGui::BeginDisabled(whyUp != nullptr);

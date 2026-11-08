@@ -30,10 +30,23 @@ Same as above without `get_reach_level`; the change is `CALL_DUNGEON(floor - 1, 
 {6, 8, 21, 41, 61, 81, 101, 121, 141, 161}, a special case for floor 123 (not offered by the
 trainer), otherwise `GOTO_REL_FLOOR(-1)`.
 
-## Why every step matters
+## The crash this was investigated for
 
-An earlier version called only `GOTO_REL_FLOOR` (later with the fade). Without
-`common_floor_change`'s `RESET_FLOOR` the game crashed within a minute or two of arriving on a
-generated floor: a field job (`P4G.exe+0x32A94B`, called via `0x1402D8955`) looked up the room for
-the leader's cell, found none, and dereferenced null. With the full sequence: 5 floor changes and
-about 470 steps of wall-hugging right after arrival, no crash (it had crashed in 3 of 4 runs).
+The game crashes (`P4G.exe+0x32A94B`, null dereference) when a field object's collision step
+(`0x14032A200`) runs while the object stands in a cell that belongs to no room: it looks the room up
+from the grid, gets nothing, and uses it anyway. Every crash seen had the party leader just past the
+end of a staircase, inside the wall cell behind it (e.g. x 17402 / y −137 when the walkable stairs
+end at y −108, 360 units earlier).
+
+- Three crashes followed a floor change made with `GOTO_REL_FLOOR` alone (no `RESET_FLOOR`) and a
+  walk straight back into the arrival stairs. The floor buttons now replay the stairs procedures in
+  full, which is what the game does in any case.
+- One more happened on a floor entered through the gate, after a battle, with no trainer floor
+  change. It could not be reproduced: ~800 random steps at the same stairs, with and without the
+  trainer, never left the walkable area.
+
+Because the cause of the second kind is not known, the trainer guards the collision step itself
+(`Features/FieldGuard`): with no room it returns 0, which the game already returns when a probe
+blocks a move, so nothing moves that frame instead of crashing. It logs every occurrence with the
+leader's position, and the Field page tells the player how to get out. Tested by putting the leader
+into the wall cell behind the 1F stairs: the guard fired 171 times in 5 seconds, no crash.
