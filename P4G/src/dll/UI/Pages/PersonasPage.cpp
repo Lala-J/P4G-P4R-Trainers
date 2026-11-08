@@ -375,6 +375,88 @@ void DrawGive(const Game::Snapshot& s) {
     ImGui::EndChild();
 }
 
+// --- Fusion preview ---------------------------------------------------------------------------
+int g_fa = -1, g_fb = -1;               // stock slots
+uint16_t g_fCacheA = 0, g_fCacheB = 0;  // the pair the cached result belongs to
+PersonaStock::Fusion g_fusion;
+
+void PickRow(const Game::Snapshot& s, const char* label, int& pick, int other) {
+    W::Dim("%s", label);
+    ImGui::SameLine();
+    int shown = 0;
+    for (int i = 0; i < Game::kStock; ++i) {
+        if (!s.stock[i].valid) continue;
+        if (shown++) ImGui::SameLine();
+        ImGui::PushID(i);
+        bool sel = pick == i;
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::ColorConvertU32ToFloat4(C::Yellow));
+        if (sel) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(C::Black));
+        ImGui::BeginDisabled(i == other);
+        if (ImGui::SmallButton(Names::PersonaOr(s.stock[i].id).c_str())) pick = sel ? -1 : i;
+        ImGui::EndDisabled();
+        if (sel) ImGui::PopStyleColor(2);
+        ImGui::PopID();
+    }
+}
+
+void DrawFusionPreview(const Game::Snapshot& s) {
+    SectionHeader("FUSION PREVIEW");
+    if (!PersonaStock::UnlockOverrideAvailable()) {
+        W::Dim("Unavailable on this game build (a host check failed).");
+        return;
+    }
+    W::Dim("Pick two of Yu's Personas to see what the Velvet Room would make of them, from the game's own "
+           "fusion. Skills shown are the result's own; inherited skills are chosen in the Velvet Room (or "
+           "set them afterwards with the editor above).");
+    ImGui::PushID("fa");
+    PickRow(s, "First ", g_fa, g_fb);
+    ImGui::PopID();
+    ImGui::PushID("fb");
+    PickRow(s, "Second", g_fb, g_fa);
+    ImGui::PopID();
+    if (g_fa < 0 || g_fb < 0 || !s.stock[g_fa].valid || !s.stock[g_fb].valid) return;
+    uint16_t a = s.stock[g_fa].id, b = s.stock[g_fb].id;
+    if (a != g_fCacheA || b != g_fCacheB) {
+        g_fusion = PersonaStock::Preview(a, b);
+        g_fCacheA = a;
+        g_fCacheB = b;
+    }
+    if (g_fusion.kind == 0) {
+        W::Dim("These two can't be fused together.");
+        return;
+    }
+    const auto& r = g_fusion.result;
+    auto info = PersonaStock::Describe(r.id);
+    bool spoiler = !PersonaStock::ArcanaVisible(info.arcana) ||
+                   (info.ngPlus && !Spoilers::Visible(Spoilers::Kind::Persona, r.id, false));
+    if (spoiler) {
+        Spoilers::HiddenPlaceholder(Spoilers::Kind::Persona, r.id, "the result");
+        return;
+    }
+    std::string arc = Names::Arcana(info.arcana);
+    ImGui::PushFont(g_fonts.bold);
+    ImGui::Text("= %s", Names::PersonaOr(r.id).c_str());
+    ImGui::PopFont();
+    ImGui::SameLine();
+    W::Chip(arc.empty() ? "?" : arc.c_str(), W::ArcanaColor(info.arcana));
+    ImGui::SameLine();
+    ImGui::Text("Lv %u", r.level);
+    if (g_fusion.kind == 2) {
+        ImGui::SameLine();
+        W::Chip("SPECIAL FUSION", C::PanelHi, C::White);
+    }
+    std::string skills;
+    for (uint16_t k : r.skills)
+        if (k) skills += (skills.empty() ? "" : ", ") + Names::SkillOr(k);
+    W::Dim("Its own skills: %s", skills.empty() ? "—" : skills.c_str());
+    int yu = s.U(Game::Yu).level;
+    if (r.level > yu)
+        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Orange),
+                           "Yu is level %d, so the Velvet Room won't fuse this yet (it needs level %u).", yu, r.level);
+    if (PersonaStock::SlotOf(r.id) >= 0)
+        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Orange), "Yu already has this Persona.");
+}
+
 }  // namespace
 
 namespace Pages {
@@ -405,6 +487,7 @@ void Personas() {
     DrawEditor(s);
     if (PersonaStock::Available()) DrawStockManager(s);
     DrawGive(s);
+    DrawFusionPreview(s);
 
     SectionHeader("VELVET ROOM RULES");
     if (!PersonaStock::UnlockOverrideAvailable()) {

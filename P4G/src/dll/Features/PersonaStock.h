@@ -56,6 +56,14 @@ void Register(int slot);       // save this stock Persona's current form to the 
 void FillCompendium();
 int CompendiumGaps();
 
+// Fusion preview through the game's own two-Persona fusion (0x140240A90): the result's base form
+// (id, level, skills before inheritance). kind 0 = no result, 1 = normal, 2 = special fusion.
+struct Fusion {
+    int kind = 0;
+    Game::Persona result{};
+};
+Fusion Preview(uint16_t a, uint16_t b);   // game thread only
+
 // Velvet Room rule: ultimate Personas can be fused before their arcana's link is maxed. The game
 // keeps a table of {unlock flag, Persona}; this answers "unlocked" for every entry.
 bool UnlockOverrideAvailable();

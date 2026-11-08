@@ -102,6 +102,7 @@ constexpr uintptr_t StockCapacity = 0x1400D7630;     // int (): 6 / 8 / 10 / 12 
 constexpr uintptr_t CompendiumRegister = 0x140242DF0;  // void (const Persona*) [DRV]
 constexpr uintptr_t SummonPrice = 0x140245630;       // int (const Persona*): the Velvet Room's fee [DRV]
 constexpr uintptr_t pCompendium = 0x1411A7038;       // -> SaveBlock+0x2510, Persona[256] by id [DRV]
+constexpr uintptr_t FusionResult = 0x140240A90;      // u8 (Persona* out, u16 a, u16 b): 0 none, 1 normal, 2 special [DRV]
 constexpr uintptr_t PersonaUnlocked = 0x140240420;   // int (u16 id): ultimates need their unlock flag [DRV]
 constexpr uintptr_t pUnlockTable = 0x1411A7858;      // -> {i32 flag; i16 persona; u16 mode}[count] [DRV]
 constexpr uintptr_t UnlockCount = 0x1411A7860;       // u32 [DRV]
@@ -206,6 +207,8 @@ inline constexpr Probe kProbes[] = {
     {"SummonPrice", "stock", ProbeKind::Code, SummonPrice,
      "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 56 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F BE 43 21", 0},
     {"Compendium pointer", "stock", ProbeKind::PtrEq, pCompendium, nullptr, SaveBlock + 0x2510},
+    {"FusionResult", "fusion", ProbeKind::Code, FusionResult,
+     "40 53 57 41 54 48 83 EC 70 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 44 24 48 4C 8B E1 41 0F B7 F8", 0},
     {"PersonaUnlocked", "fusion", ProbeKind::Code, PersonaUnlocked,
      "48 89 5C 24 08 57 48 83 EC 20 0F B7 D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 44 8B 15 ?? ?? ?? ?? 45 33 C9 BF 01 00 00 00", 0},
     {"Field collision step", "fieldguard", ProbeKind::Code, FieldCollisionStep,

@@ -301,6 +301,16 @@ void FillCompendium() {
     });
 }
 
+// --- Fusion preview --------------------------------------------------------------------------
+Fusion Preview(uint16_t a, uint16_t b) {
+    Fusion f;
+    if (!HostCheck::GroupOk("fusion") || !GameThread::IsGameThread() || !a || !b || a == b) return f;
+    std::memset(&f.result, 0, sizeof f.result);
+    f.kind = reinterpret_cast<uint8_t (*)(Persona*, uint16_t, uint16_t)>(Addr::FusionResult)(&f.result, a, b);
+    if (f.kind == 0 || f.result.id == 0) f.kind = 0;
+    return f;
+}
+
 // --- Velvet Room rule override ------------------------------------------------------------------
 namespace {
 using Unlocked_t = int (*)(uint16_t);
