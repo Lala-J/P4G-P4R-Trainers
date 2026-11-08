@@ -8,6 +8,7 @@
 #include <atomic>
 
 #include "Engine/GameThread.h"
+#include "Features/AutoAdvance.h"
 #include "Features/BattleOverrides.h"
 #include "Features/Trace.h"
 #include "Hooks/InputHooks.h"
@@ -167,6 +168,7 @@ void OnPresent(IDXGISwapChain* sc) {
     GameThread::BindToCurrent();
     GameThread::Drain();
     BattleFx::Tick();
+    AutoAdvance::Tick();
     Trace::Tick();
     if (!g_ready && (g_initFailed || !Init(sc))) return;
 

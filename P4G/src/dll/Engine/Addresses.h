@@ -86,6 +86,10 @@ constexpr uintptr_t PersonaReqExp = 0x1400D8050;           // thunk u32 (persona
 constexpr uintptr_t GetPartyMemberPersona = 0x1400D6E80;   // thunk Persona* (charId) [DRV]
 constexpr uintptr_t CalculateGainedExp = 0x140100F50;      // [MOD:p4g64.expShare]
 constexpr uintptr_t GivePartyMembersExp = 0x140101AD0;     // [MOD:p4g64.expShare][DRV]
+// --- Dialogue ---------------------------------------------------------------------------------
+constexpr uintptr_t DrawDialog = 0x140461880;    // MsgWindow::DrawDialog(info)  [MOD:p4g64.accessibility][DRV]
+constexpr uintptr_t CriSetCueId = 0x140611E4C;   // criAtomExPlayer_SetCueId     [MOD:Ryo][DRV]
+constexpr uintptr_t CriGetStatus = 0x140610668;  // criAtomExPlayer_GetStatus    [MOD:Ryo][DRV]
 constexpr uintptr_t pEnemyTable = 0x140EC0920;        // -> 0x3C per enemy id [MOD:AquaRose7][DRV]
 constexpr uintptr_t pEnemyAffinity = 0x140EC0970;     // -> u16[16] per enemy id: hi byte flags [DRV]
 constexpr uintptr_t CmmGetRank = 0x1401AE7F0;    // u16 (u16 id)                   [DRV]
@@ -155,6 +159,12 @@ inline constexpr Probe kProbes[] = {
      "48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 8B F1 48 8B FA", 0},
     {"GivePartyMembersExp", "levels", ProbeKind::Code, GivePartyMembersExp,
      "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8D B3 9A 06 00 00", 0},
+    {"MsgWindow::DrawDialog", "dialogue", ProbeKind::Code, DrawDialog,
+     "48 89 5C 24 10 48 89 6C 24 18 57 48 83 EC 20 48 8B D9 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B7 05", 0},
+    {"criAtomExPlayer_SetCueId", "dialogue", ProbeKind::Code, CriSetCueId,
+     "48 8B C4 48 89 58 ?? 48 89 68 ?? 48 89 70 ?? 48 89 78 ?? 41 54 41 56 41 57 48 81 EC 80 00 00 00 4D 63 F0", 0},
+    {"criAtomExPlayer_GetStatus", "dialogue", ProbeKind::Code, CriGetStatus,
+     "48 89 5C 24 ?? 57 48 83 EC 20 48 8B F9 48 85 C9 75 ?? 44 8D 41 ?? 48 8D 15 ?? ?? ?? ?? E8 ?? ?? ?? ?? 8D 47", 0},
     {"Enemy affinity table use", "intel", ProbeKind::Code, 0x1400D363E,
      "48 8B 05 2B D3 DE 00 0F B7 14 48", 0},
     {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,

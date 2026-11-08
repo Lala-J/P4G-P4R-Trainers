@@ -1,5 +1,6 @@
 #include <imgui.h>
 
+#include "Features/AutoAdvance.h"
 #include "Features/FieldQol.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -56,6 +57,24 @@ void FieldDungeon() {
         FieldQol::GotoRelativeFloor(-1);
     ImGui::EndDisabled();
     ImGui::EndDisabled();
+
+    SectionHeader("DIALOGUE AUTO-ADVANCE");
+    {
+        auto& o = AutoAdvance::Opts();
+        bool ch = ImGui::Checkbox("Advance dialogue automatically", &o.enabled);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Only the conversation box: never choices, menus, tutorials or pop-ups. It "
+                              "presses Confirm for you once the page is fully shown and the voice has finished.");
+        float sc = Overlay::Scale();
+        ImGui::SetNextItemWidth(260 * sc);
+        ch |= ImGui::SliderInt("After a voiced line", &o.voicedDelayMs, 0, 6000, "%d ms");
+        ImGui::SetNextItemWidth(260 * sc);
+        ch |= ImGui::SliderInt("Unvoiced line", &o.unvoicedDelayMs, 300, 8000, "%d ms");
+        ImGui::SetNextItemWidth(260 * sc);
+        ch |= ImGui::SliderInt("System text in the box", &o.systemDelayMs, 300, 8000, "%d ms");
+        if (ch) AutoAdvance::SaveOptions();
+        W::Dim("Now: %s. Holding any key pauses it.", AutoAdvance::Status());
+    }
 
     SectionHeader("NOT INCLUDED ON PURPOSE");
     W::Dim("Changing the date, repeating days, unlocking the whole town map and calling arbitrary events "

@@ -22,6 +22,9 @@ bool ReadPad(XINPUT_STATE* out);
 // Replays window messages captured on the window thread into ImGui (render thread).
 void DrainToImGui();
 
+// Presses the game's Confirm key (from its own key bindings) for the next keyboard poll.
+void InjectConfirm();
+
 void OnOverlayOpened();
 void OnOverlayClosed();
 

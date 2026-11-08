@@ -34,6 +34,31 @@ std::mutex g_diMu;
 uint8_t g_kbLatch[256] = {};                 // keys pressed while open, held since
 std::map<void*, DIJOYSTATE2> g_joyRest;      // last joystick state before opening
 std::map<void*, bool> g_isKeyboard;          // device type cache
+std::atomic<int> g_injectPolls{0};           // polls left with Confirm held
+uint8_t g_confirmDik = 0;
+
+// The game's own binding for Confirm (P4G.ini [ActionConfig] Action04: "1-<DIK>" entries).
+uint8_t ConfirmDik() {
+    if (g_confirmDik) return g_confirmDik;
+    g_confirmDik = 0x39;  // Space, the default
+    wchar_t path[MAX_PATH];
+    if (GetEnvironmentVariableW(L"LOCALAPPDATA", path, MAX_PATH)) {
+        std::wstring ini = std::wstring(path) + L"\SEGA\P4G\P4G.ini";
+        wchar_t v[128] = {};
+        GetPrivateProfileStringW(L"ActionConfig", L"Action04", L"", v, 128, ini.c_str());
+        // e.g. "3-16384,0-0,1-57,1-28": the first "1-n" is the keyboard key
+        for (wchar_t* p = v; *p; ++p) {
+            if (p[0] == L'1' && p[1] == L'-' && (p == v || p[-1] == L',')) {
+                int dik = _wtoi(p + 2);
+                if (dik > 0 && dik < 256) {
+                    g_confirmDik = uint8_t(dik);
+                    break;
+                }
+            }
+        }
+    }
+    return g_confirmDik;
+}
 
 bool IsKeyboard(IDirectInputDevice8W* dev) {
     std::lock_guard<std::mutex> lk(g_diMu);
@@ -54,6 +79,10 @@ HRESULT STDMETHODCALLTYPE GetDeviceState_Hook(IDirectInputDevice8W* self, DWORD 
 
     if (cb == 256) {  // keyboard
         auto* k = static_cast<uint8_t*>(data);
+        if (!open && g_injectPolls.load() > 0) {
+            int left = --g_injectPolls;
+            if (left >= 1) k[ConfirmDik()] |= 0x80;  // held for one poll, then released
+        }
         std::lock_guard<std::mutex> lk(g_diMu);
         if (Input::g_debug) {
             static uint8_t prev[256];
@@ -373,6 +402,8 @@ void DrainToImGui() {
 }
 
 bool g_debug = false;
+
+void InjectConfirm() { g_injectPolls = 3; }
 
 void OnOverlayOpened() {
     if (o_ClipCursor) o_ClipCursor(nullptr);

@@ -2,6 +2,7 @@
 
 #include "Engine/HostCheck.h"
 #include "Engine/SaveBackup.h"
+#include "Features/AutoAdvance.h"
 #include "Features/Battle.h"
 #include "Features/BattleOverrides.h"
 #include "Features/Inventory.h"
@@ -46,6 +47,7 @@ DWORD WINAPI MainThread(LPVOID) {
             Battle::InstallHooks();
             BattleFx::InstallHooks();
             Levels::InstallHooks();
+            AutoAdvance::InstallHooks();
             InventoryFx::InstallHooks();
             Trace::InstallHooks();
         }
