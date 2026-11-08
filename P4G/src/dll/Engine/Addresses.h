@@ -78,6 +78,8 @@ constexpr uintptr_t AiRunAway = 0x14006F7B0;          // AI 0x203F [DRV AI flow 
 constexpr uintptr_t AiWait = 0x14006F820;             // AI 0x2040
 constexpr uintptr_t CanChangeToState = 0x140099180;   // [MOD:p4g64.quickBattleRestart sig][DRV]
 constexpr uintptr_t PersonaCount = 0x140096650;       // u16 (1, 0): Yu's Persona count [DRV]
+constexpr uintptr_t pEnemyTable = 0x140EC0920;        // -> 0x3C per enemy id [MOD:AquaRose7][DRV]
+constexpr uintptr_t pEnemyAffinity = 0x140EC0970;     // -> u16[16] per enemy id: hi byte flags [DRV]
 constexpr uintptr_t CmmGetRank = 0x1401AE7F0;    // u16 (u16 id)                   [DRV]
 
 enum class ProbeKind : uint8_t {
@@ -136,6 +138,8 @@ inline constexpr Probe kProbes[] = {
      "40 53 48 83 EC 20 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 C9 48 8B 98 58 02 00 00 E8 ?? ?? ?? ?? 25 FF FF FF 00 4C 8D 0D ?? ?? ?? ?? 0F BA E8 1A", 0},
     {"AI_WAIT", "battlefx", ProbeKind::Code, AiWait,
      "40 53 48 83 EC 20 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 33 C9 48 8B 98 58 02 00 00 E8 ?? ?? ?? ?? 25 FF FF FF 00 4C 8D 0D ?? ?? ?? ?? 0D 00 00 00 05", 0},
+    {"Enemy affinity table use", "intel", ProbeKind::Code, 0x1400D363E,
+     "48 8B 05 2B D3 DE 00 0F B7 14 48", 0},
     {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,
      "48 89 5C 24 10 57 48 83 EC 20 48 8B F9 0F B7 DA 48 8D 0D", 0},
     {"AddHP", "battle", ProbeKind::Code, AddHP,

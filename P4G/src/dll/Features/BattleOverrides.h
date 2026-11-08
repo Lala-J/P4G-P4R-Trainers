@@ -11,6 +11,8 @@
 //   AI_RUN_AWAY    0x14006F7B0, identical to AI_WAIT 0x14006F820 except for the queued action.
 //   CanChangeToState 0x140099180 (turn, state): state 5 = Persona.
 
+#include <cstdint>
+
 namespace BattleFx {
 
 struct Options {
@@ -32,5 +34,8 @@ Options& Opts();
 void SaveOptions();
 bool InstallHooks();
 void Tick();  // every frame on the game thread (debuff / ailment cleanup)
+
+// The game's own "is this affinity known?" answer, ignoring the reveal switch.
+uint64_t KnownUnhooked(uint16_t enemyId, uint16_t element);
 
 }  // namespace BattleFx

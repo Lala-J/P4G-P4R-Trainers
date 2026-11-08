@@ -249,9 +249,8 @@ bool ImGuiWantsMessage(UINT m) {
 LRESULT CALLBACK WndProc_Hook(HWND h, UINT m, WPARAM w, LPARAM l) {
     Hooks::Guard g;
     bool repeat = (l & (1 << 30)) != 0;
-    if (Input::g_debug && (m == WM_KEYDOWN || m == WM_KEYUP || m == WM_SYSKEYDOWN || m == WM_LBUTTONDOWN ||
-                           m == WM_LBUTTONUP || m == WM_SETFOCUS || m == WM_KILLFOCUS ||
-                           m == WM_ACTIVATEAPP || m == WM_ACTIVATE || m == WM_MOUSEACTIVATE || m == WM_CAPTURECHANGED))
+    if (Input::g_debug && m != WM_MOUSEMOVE && m != WM_SETCURSOR && m != WM_NCHITTEST && m != WM_TIMER &&
+        m != WM_PAINT && m != WM_INPUT && m != 0x0118 /*WM_SYSTIMER*/ && m != WM_NCMOUSEMOVE)
         LOGI("input: wndproc msg 0x%X vk 0x%llX open=%d", m, (unsigned long long)w, Overlay::IsOpen());
     if ((m == WM_KEYDOWN || m == WM_SYSKEYDOWN) && (int)w == g_toggleVk.load()) {
         if (!repeat) Overlay::Toggle();
@@ -362,6 +361,11 @@ void DrainToImGui() {
         q.swap(g_queue);
     }
     for (const Msg& m : q) {
+        // Mouse buttons and position are polled every frame instead (Overlay::PollMouse): the game
+        // pumps its message queue irregularly, which delayed clicks by seconds.
+        if ((m.m >= WM_LBUTTONDOWN && m.m <= WM_MBUTTONDBLCLK) || m.m == WM_MOUSEMOVE ||
+            (m.m >= WM_XBUTTONDOWN && m.m <= WM_XBUTTONDBLCLK))
+            continue;
         if (g_debug && (m.m == WM_KEYDOWN || m.m == WM_KEYUP))
             LOGI("input: to imgui msg 0x%X vk 0x%llX", m.m, (unsigned long long)m.w);
         ImGui_ImplWin32_WndProcHandler(m.h, m.m, m.w, m.l);

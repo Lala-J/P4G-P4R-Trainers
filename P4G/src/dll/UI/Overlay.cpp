@@ -122,6 +122,19 @@ void FeedPad(const XINPUT_GAMEPAD& gp) {
     ana(ImGuiKey_GamepadRStickDown, gp.sThumbRY, -dzR, -32768);
 }
 
+// Polls the real mouse state each frame (independent of the game's message pump).
+void PollMouse() {
+    ImGuiIO& io = ImGui::GetIO();
+    if (GetForegroundWindow() != g_hwnd) return;
+    POINT pt;
+    if (GetCursorPos(&pt) && ScreenToClient(g_hwnd, &pt)) io.AddMousePosEvent((float)pt.x, (float)pt.y);
+    bool swap = GetSystemMetrics(SM_SWAPBUTTON) != 0;
+    auto down = [](int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; };
+    io.AddMouseButtonEvent(0, down(swap ? VK_RBUTTON : VK_LBUTTON));
+    io.AddMouseButtonEvent(1, down(swap ? VK_LBUTTON : VK_RBUTTON));
+    io.AddMouseButtonEvent(2, down(VK_MBUTTON));
+}
+
 void Rebuild() {
     Theme::LoadFonts(Overlay::Scale());
     Theme::Apply(Overlay::Scale());
@@ -186,7 +199,10 @@ void OnPresent(IDXGISwapChain* sc) {
     if (!g_rtv) return;
 
     Input::DrainToImGui();
-    if (open) FeedPad(ps.Gamepad);
+    if (open) {
+        FeedPad(ps.Gamepad);
+        PollMouse();
+    }
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();

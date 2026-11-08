@@ -8,6 +8,7 @@
 #include "Engine/Calendar.h"
 #include "Engine/GameState.h"
 #include "Features/CaseFile.h"
+#include "Features/EnemyIntel.h"
 #include "Hooks/InputHooks.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -39,8 +40,6 @@ PLANNED(DrawRomance, "M4c", "Pick a partner by portrait and follow a step-by-ste
         "with every step hidden until you choose to reveal it.")
 PLANNED(DrawLevels, "M4", "Levels and EXP for Yu, every party member and every Persona,",
         "using the game's own level-up routines.")
-PLANNED(DrawIntel, "M4b", "Reveal every enemy's affinities in the game's own Analysis screen,",
-        "plus an in-battle HUD and a spoiler-masked shadow list.")
 PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
 PLANNED(DrawField, "M4c", "Shops from anywhere, floor select, party changes in dungeons,",
         "save anywhere, auto-advance for dialogue.")
@@ -57,7 +56,7 @@ const PageDef kPages[] = {
     {"Personas", Pages::Personas, true},       {"Social Links", Pages::SocialLinks, true},
     {"Romance", DrawRomance, false},           {"Case File", Pages::CaseFile, true},
     {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", DrawLevels, false},
-    {"Enemy Intel", DrawIntel, false},         {"NG+ & Unlocks", DrawNgPlus, false},
+    {"Enemy Intel", Pages::EnemyIntel, true},         {"NG+ & Unlocks", DrawNgPlus, false},
     {"Field & Dungeon", DrawField, false},     {"Advanced", Pages::Advanced, true},
     {"Settings", Pages::Settings, true},       {"About", Pages::About, true},
 };
@@ -145,7 +144,7 @@ void DrawRail(float width) {
         if (i == focusTarget) ImGui::SetKeyboardFocusHere();
         if (ImGui::InvisibleButton("tab", ImVec2(width - 6 * s, h), ImGuiButtonFlags_EnableNav)) g_page = i;
         // Moving the keyboard / pad focus along the rail switches pages, like the game's menus.
-        if (ImGui::IsItemFocused() && i != focusTarget && ImGui::GetIO().NavActive) g_page = i;
+        if (ImGui::IsItemFocused() && i != focusTarget && ImGui::GetIO().NavVisible) g_page = i;
         bool hov = ImGui::IsItemHovered() || ImGui::IsItemFocused();
         ImVec2 mx(p.x + width - 6 * s, p.y + h);
         if (sel) SlantRect(dl, p, mx, h * 0.3f, C::Yellow);
@@ -204,13 +203,16 @@ bool s_justOpened = false;
 
 namespace Shell {
 
-bool WantsHud() { return false; }
+bool WantsHud() { return Intel::ShowHud() && Game::Current().inBattle; }
 
 void NotifyOpened() { s_justOpened = true; }
 
 void Draw(bool open) {
-    if (!open) return;
     Game::Capture();
+    if (!open) {
+        if (Intel::ShowHud()) Pages::IntelHud();
+        return;
+    }
     if (s_justOpened) {
         s_justOpened = false;
         ImGui::SetNextWindowFocus();

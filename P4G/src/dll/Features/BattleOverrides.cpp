@@ -123,6 +123,12 @@ uint64_t Known_Hook(uint16_t enemy, uint16_t elem) {
 
 Options& Opts() { return g_o; }
 
+uint64_t KnownUnhooked(uint16_t id, uint16_t e) {
+    if (o_Known) return o_Known(id, e);
+    if (!HostCheck::GroupOk("battlefx")) return 0;
+    return reinterpret_cast<Known_t>(Addr::GetAffinityKnown)(id, e);
+}
+
 void SaveOptions() {
     Settings::SetInt("battlefx", "noDowns", g_o.noDowns);
     Settings::SetInt("battlefx", "noAilments", g_o.noAilments);

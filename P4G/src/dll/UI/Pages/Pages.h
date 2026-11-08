@@ -11,6 +11,8 @@ void Inventory();
 void Personas();
 void BattlePage();
 void Advanced();
+void EnemyIntel();
+void IntelHud();
 void Settings();
 void About();
 
