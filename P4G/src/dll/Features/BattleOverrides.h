@@ -23,6 +23,7 @@ struct Options {
     bool enemiesMiss = false;    // enemy attacks on the party always miss (sure-hit attacks excepted)
     bool partyHits = false;      // party attacks never miss or get dodged
     bool partyCrits = false;     // party attacks that can crit, always do
+    bool forcedOneMore = false;  // every party hit on a standing enemy knocks it down -> 1 More
     bool noFlee = false;         // shadows can't run away
     bool weakness = false;       // party attacks hit the target's weakness
     bool weaknessForce = false;  // ...even when it has none

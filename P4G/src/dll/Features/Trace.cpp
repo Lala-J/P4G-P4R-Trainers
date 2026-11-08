@@ -72,7 +72,51 @@ void DumpBattle(uintptr_t bm) {
     }
 }
 
+// One-more research: capture battle state around a party attack and diff it later.
+struct Cap {
+    bool active = false;
+    int result = 0;
+    int frames = 0;
+    uintptr_t bm = 0, node = 0;
+    uint8_t bmBefore[0x1000];
+    uint8_t nodeBefore[0xD10];
+} g_cap;
+
+uintptr_t NodeOf(uintptr_t bm, uintptr_t unit) {
+    uintptr_t n = Ptr(bm + 0x1D0);
+    for (int i = 0; n && i < 12; ++i) {
+        if (Ptr(n + 0xCF0) == unit) return n;
+        n = Ptr(n + 0xD00);
+    }
+    return 0;
+}
+
+void DiffLog(const char* what, const uint8_t* a, const uint8_t* b, size_t n) {
+    int lines = 0;
+    for (size_t i = 0; i < n && lines < 48; ++i)
+        if (a[i] != b[i]) {
+            LOGI("trace: 1more %s +0x%03zX: %02X -> %02X", what, i, a[i], b[i]);
+            ++lines;
+        }
+}
+
 }  // namespace
+
+void OnPartyResolve(void* atk, int result) {
+    if (!g_on || g_cap.active) return;
+    uintptr_t bm = Ptr(Addr::pBattleMgr);
+    if (!bm) return;
+    uintptr_t node = NodeOf(bm, reinterpret_cast<uintptr_t>(atk));
+    if (!node || !Sig::Readable(bm, 0x1000) || !Sig::Readable(node, 0xD10)) return;
+    g_cap.active = true;
+    g_cap.result = result;
+    g_cap.frames = 90;
+    g_cap.bm = bm;
+    g_cap.node = node;
+    std::memcpy(g_cap.bmBefore, reinterpret_cast<void*>(bm), 0x1000);
+    std::memcpy(g_cap.nodeBefore, reinterpret_cast<void*>(node), 0xD10);
+    LOGI("trace: 1more capture start, result %d, node %p", result, (void*)node);
+}
 
 bool Enabled() { return g_on; }
 
@@ -136,6 +180,15 @@ void Tick() {
     std::memcpy(g_prevFlags, flags, sizeof g_prevFlags);
     std::memcpy(g_prevCounters, counters, sizeof g_prevCounters);
     g_havePrev = true;
+
+    if (g_cap.active && --g_cap.frames <= 0) {
+        g_cap.active = false;
+        if (Ptr(Addr::pBattleMgr) == g_cap.bm && Sig::Readable(g_cap.node, 0xD10)) {
+            LOGI("trace: 1more capture end, result %d", g_cap.result);
+            DiffLog("bm", g_cap.bmBefore, reinterpret_cast<const uint8_t*>(g_cap.bm), 0x1000);
+            DiffLog("node", g_cap.nodeBefore, reinterpret_cast<const uint8_t*>(g_cap.node), 0xD10);
+        }
+    }
 
     uintptr_t bm = Ptr(Addr::pBattleMgr);
     if (bm && !g_prevBattle) {

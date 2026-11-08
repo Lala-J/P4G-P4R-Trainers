@@ -9,4 +9,7 @@ bool Enabled();
 bool InstallHooks();  // no-op unless enabled
 void Tick();          // every frame on the game thread
 
+// Called by the battle hooks: a party attack resolved with `result` (1 hit, 2 crit, 4 weak...).
+void OnPartyResolve(void* attackerUnit, int result);
+
 }  // namespace Trace

@@ -171,6 +171,10 @@ void BattlePage() {
     toggle("Always critical", &f.partyCrits,
            "Every party attack that can be critical is (physical skills). Magic still can't crit, and "
            "bosses that can't be knocked down still can't.");
+    toggle("Forced 1 More", &f.forcedOneMore,
+           "Every party hit on a standing enemy knocks it down, which is how the game grants a 1 More. "
+           "Hits also count as critical for damage. Enemies that can't be knocked down (most bosses) "
+           "still can't; once everyone is down you get the All-Out Attack prompt.");
     toggle("Weakness override", &f.weakness,
            "Party attacks count as hitting the target's weakness: a fire skill on a shadow weak to "
            "electricity lands as an electricity hit. The skill's own power is unchanged.");

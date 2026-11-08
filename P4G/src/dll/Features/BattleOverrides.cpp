@@ -7,6 +7,7 @@
 #include "Engine/HostCheck.h"
 #include "Engine/SigScan.h"
 #include "Features/Battle.h"
+#include "Features/Trace.h"
 #include "Hooks/Hook.h"
 #include "Util/Log.h"
 #include "Util/Settings.h"
@@ -42,6 +43,9 @@ int Hit_Hook(Game::Unit* atk, Game::Unit* tgt, uint16_t skill, uint32_t flags) {
     Hooks::Guard g;
     int r = o_Hit(atk, tgt, skill, flags);
     bool atkParty = Party(atk), tgtParty = Party(tgt);
+    if (Trace::Enabled())
+        LOGI("trace: hit atk %p(%d) -> tgt %p(%d) skill %u flags 0x%X = %d", (void*)atk, atkParty, (void*)tgt,
+             tgtParty, skill, flags, r);
     if (g_o.enemiesMiss && tgtParty && !atkParty && !(flags & 2) && r == 1) {
         *reinterpret_cast<uint16_t*>(reinterpret_cast<uint8_t*>(tgt) + 0x30) = 0;  // plain miss text
         return 4;
@@ -59,7 +63,12 @@ int Crit_Hook(Game::Unit* atk, Game::Unit* tgt, uint16_t skill, uint32_t flags) 
     if (force) --t_rollZero;
     // A party member hit by an enemy is never weak / critically hit, so never knocked down.
     if (g_o.noDowns && tgtParty && !atkParty && (r == 2 || r == 4)) r = 1;
+    // Forced 1 More: in P4G a 1 More is the reward for knocking a standing enemy down. A plain
+    // hit (1) on an enemy that isn't down becomes a knockdown hit (2), and the game grants the
+    // 1 More itself. Enemies that can't be knocked down (most bosses) still can't.
+    if (g_o.forcedOneMore && atkParty && !tgtParty && r == 1 && tgt && !(tgt->ailments & 0x100000)) r = 2;
     // Weakness override: the affinity hook already made the hit "weak"; nothing more here.
+    if (atkParty && !tgtParty) Trace::OnPartyResolve(atk, r);
     return r;
 }
 
@@ -137,6 +146,7 @@ void SaveOptions() {
     Settings::SetInt("battlefx", "enemiesMiss", g_o.enemiesMiss);
     Settings::SetInt("battlefx", "partyHits", g_o.partyHits);
     Settings::SetInt("battlefx", "partyCrits", g_o.partyCrits);
+    Settings::SetInt("battlefx", "forcedOneMore", g_o.forcedOneMore);
     Settings::SetInt("battlefx", "noFlee", g_o.noFlee);
     Settings::SetInt("battlefx", "weakness", g_o.weakness);
     Settings::SetInt("battlefx", "weaknessForce", g_o.weaknessForce);
@@ -153,6 +163,7 @@ bool InstallHooks() {
     g_o.enemiesMiss = b("enemiesMiss");
     g_o.partyHits = b("partyHits");
     g_o.partyCrits = b("partyCrits");
+    g_o.forcedOneMore = b("forcedOneMore");
     g_o.noFlee = b("noFlee");
     g_o.weakness = b("weakness");
     g_o.weaknessForce = b("weaknessForce");
