@@ -125,7 +125,15 @@ bool InstallHooks() {
     return ok;
 }
 
+void TickInner();
+
 void Tick() {
+    const char* before = g_status;
+    TickInner();
+    if (g_status != before && Trace::Enabled()) LOGI("dialogue: status %s", g_status);
+}
+
+void TickInner() {
     ULONGLONG now = GetTickCount64();
     Box* b = nullptr;
     for (auto& x : g_boxes)
@@ -148,11 +156,19 @@ void Tick() {
     }
     if (b->voice) {
         int st = reinterpret_cast<Status_t>(Addr::CriGetStatus)(b->voice);
-        if (st == 1 || st == 2) {  // preparing / playing
+        // Music or an ambient loop that happened to start with the page isn't a voice line:
+        // spoken lines are a few seconds long, so anything still playing after 20 s is ignored.
+        if ((st == 1 || st == 2) && now - b->pageOpened > 20000) {
+            if (Trace::Enabled()) LOGI("dialogue: cue on %p still playing after 20 s; not a voice", b->voice);
+            b->voice = nullptr;
+            b->voiceEnded = 0;
+        } else if (st == 1 || st == 2) {  // preparing / playing
             g_status = "Voice playing";
             b->voiceEnded = 0;
             return;
         }
+    }
+    if (b->voice) {
         if (!b->voiceEnded) b->voiceEnded = now;
         // A cue that was over almost as soon as the page opened is a sound effect (the advance
         // blip), not a voice line.

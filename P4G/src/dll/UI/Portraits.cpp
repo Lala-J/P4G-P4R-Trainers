@@ -5,7 +5,6 @@
 #include <cstdio>
 #include <map>
 #include <mutex>
-#include <thread>
 #include <vector>
 
 #include "Util/Cpk.h"
@@ -28,7 +27,9 @@ ID3D11Device* g_dev = nullptr;
 std::mutex g_mu;
 std::map<int, Item> g_items;
 std::vector<int> g_queue;
-std::thread g_worker;
+// A plain Win32 thread, not std::thread: if the game exits with the trainer still loaded, the
+// thread is already gone and a global std::thread's destructor would call std::terminate.
+HANDLE g_worker = nullptr;
 bool g_stop = false;
 
 int Key(int c, int e, int o) { return c << 16 | e << 8 | o; }
@@ -84,12 +85,12 @@ void Decode(int key) {
     }
 }
 
-void Worker() {
+DWORD WINAPI Worker(LPVOID) {
     for (;;) {
         int key = -1;
         {
             std::lock_guard<std::mutex> lk(g_mu);
-            if (g_stop) return;
+            if (g_stop) return 0;
             if (!g_queue.empty()) {
                 key = g_queue.back();
                 g_queue.pop_back();
@@ -109,7 +110,7 @@ void Init(void* dev) {
     g_dev = static_cast<ID3D11Device*>(dev);
     if (g_dev) g_dev->AddRef();
     g_stop = false;
-    g_worker = std::thread(Worker);
+    g_worker = CreateThread(nullptr, 0, &Worker, nullptr, 0, nullptr);
 }
 
 void Shutdown() {
@@ -117,7 +118,11 @@ void Shutdown() {
         std::lock_guard<std::mutex> lk(g_mu);
         g_stop = true;
     }
-    if (g_worker.joinable()) g_worker.join();
+    if (g_worker) {
+        WaitForSingleObject(g_worker, INFINITE);
+        CloseHandle(g_worker);
+        g_worker = nullptr;
+    }
     for (auto& [k, it] : g_items)
         if (it.srv) it.srv->Release();
     g_items.clear();
