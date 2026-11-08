@@ -36,21 +36,21 @@ The first time the trainer loads in a session it copies your save folder to
 | Page | What you get | Status |
 |---|---|---|
 | Dashboard | Today's date and time slot, the case deadline, links ready to rank up, your stats | ✅ |
-| Today | Everything you can do in the current time slot and where to find it, ordered by priority: last chances, romance, social links and hangouts, clubs and jobs, everything else | planned |
+| Today | Everything you can do in the current time slot and where to find it, ordered by priority: last chances, romance, social links and hangouts, clubs and jobs, everything else | ✅ |
 | Battle | Infinite HP (no damage, or never below 1) and infinite SP, per member HP/SP, refill | ✅ |
-| Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee | planned |
+| Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee | ✅ |
 | Inventory | Every item in the game by category, set counts through the game's own routine, items that never run out in battle or the camp menu | ✅ |
 | Personas | Yu's stock and every party member's Persona; edit stats and skills | ✅ |
 | Personas (more) | Give or remove Personas, compendium, fusion preview, Velvet Room rule overrides | planned |
 | Social Links | Rank and points against the game's own thresholds for every link, "ready to rank up", locked-out pairs, spoiler-hidden unmet links | ✅ |
-| Social Links (edits) | Rank-ups that also replay the link's own story effects, with prerequisite warnings | planned |
-| Romance | Pick a partner by portrait and follow a step-by-step route; every step stays hidden until you reveal it | planned |
+| Social Links (edits) | Rank-ups that also replay the link's own story effects, "ready at next hangout", with prerequisite warnings | ✅ |
+| Romance | Pick a partner by portrait and follow a step-by-step route; every step stays hidden until you reveal it | ✅ |
 | Case File | The current case, its deadline, days left, and the case timeline | ✅ |
 | Protagonist | Level and EXP; Courage, Knowledge, Diligence, Understanding, Expression with ranks; money; equipment | ✅ |
-| Levels & EXP | Levels and EXP for Yu, party members and every Persona, using the game's own level-up routines | planned |
-| Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel | planned |
+| Levels & EXP | Levels and EXP for Yu, party members and every Persona, using the game's own level-up routines | ✅ |
+| Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel | ✅ |
 | NG+ & Unlocks | New Game+ carry-overs granted one at a time, with warnings | planned |
-| Field & Dungeon | Shops from anywhere, floor select, party changes in dungeons, save anywhere, auto-advance for dialogue | planned |
+| Field & Dungeon | Shops and the Velvet Room from anywhere in town, next / previous floor, the whole floor revealed on the minimap, save anywhere, auto-advance for dialogue | ✅ |
 | Advanced | Undo journal for every change | ✅ |
 | Advanced (more) | Labelled flag and counter browser | planned |
 
@@ -65,7 +65,7 @@ The first time the trainer loads in a session it copies your save folder to
 - **Undo.** Changes are journaled and can be undone.
 - **Spoilers.** Anything past your current point in the story is shown as `???` until you
   reveal that one item.
-- **Things it deliberately doesn't do:** change the date, loop days, unlock the whole map,
+- **Things it deliberately doesn't do:** change the date, loop days, unlock the whole town map,
   "complete all quests", or start arbitrary events. They break the game's scheduler or skip
   rewards in ways that can't be repaired.
 

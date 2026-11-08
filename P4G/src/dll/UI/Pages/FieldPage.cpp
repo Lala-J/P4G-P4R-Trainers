@@ -58,6 +58,22 @@ void FieldDungeon() {
     ImGui::EndDisabled();
     ImGui::EndDisabled();
 
+    SectionHeader("MINIMAP");
+    if (!FieldQol::RevealMapAvailable()) {
+        W::Dim("Unavailable on this game build (a host check failed).");
+    } else {
+        bool on = FieldQol::RevealMapEnabled();
+        if (ImGui::Checkbox("Reveal the whole floor on the minimap", &on)) FieldQol::SetRevealMap(on);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Each floor's map fills in as soon as you arrive, as if you had already walked "
+                              "every corridor and room. Nothing else changes: chests and stairs are where "
+                              "they would be anyway, and turning it off leaves the next floor unexplored.");
+        int total = 0, shown = FieldQol::RevealedCells(&total);
+        if (shown >= 0 && total > 0) W::Dim("This floor: %d of %d areas on the map.", shown, total);
+        else if (dungeon) W::Dim("This floor doesn't use the generated map (fixed floors are drawn in full anyway).");
+        else W::Dim("Applies inside the TV world's generated floors.");
+    }
+
     SectionHeader("DIALOGUE AUTO-ADVANCE");
     {
         auto& o = AutoAdvance::Opts();

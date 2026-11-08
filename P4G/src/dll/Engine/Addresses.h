@@ -90,6 +90,11 @@ constexpr uintptr_t GivePartyMembersExp = 0x140101AD0;     // [MOD:p4g64.expShar
 constexpr uintptr_t DrawDialog = 0x140461880;    // MsgWindow::DrawDialog(info)  [MOD:p4g64.accessibility][DRV]
 constexpr uintptr_t CriSetCueId = 0x140611E4C;   // criAtomExPlayer_SetCueId     [MOD:Ryo][DRV]
 constexpr uintptr_t CriGetStatus = 0x140610668;  // criAtomExPlayer_GetStatus    [MOD:Ryo][DRV]
+// --- Dungeon minimap (docs/data/minimap.md) -------------------------------------------------
+constexpr uintptr_t MinimapGrid = 0x1411AB39C;     // cell[24][16] x 16 B, index major*16+minor; +0: 1 walkable, 2 wall [MOD:AquaRose7][DRV]
+constexpr uintptr_t pMinimapSeen = 0x1451EC580;    // -> u16[24]: bit `minor` of [major] = drawn on the minimap [DRV]
+constexpr uintptr_t MinimapRevealCell = 0x14042FA80;  // void (u8 minor, u8 major): the game's own per-cell reveal [DRV]
+constexpr uintptr_t pFieldRoot = 0x140EC0FF0;      // ->+0x250->+0x48->+0x18 = player; +0x360 x, +0x368 z [DRV]
 constexpr uintptr_t pEnemyTable = 0x140EC0920;        // -> 0x3C per enemy id [MOD:AquaRose7][DRV]
 constexpr uintptr_t pEnemyAffinity = 0x140EC0970;     // -> u16[16] per enemy id: hi byte flags [DRV]
 constexpr uintptr_t CmmGetRank = 0x1401AE7F0;    // u16 (u16 id)                   [DRV]
@@ -169,6 +174,12 @@ inline constexpr Probe kProbes[] = {
      "48 8B 05 2B D3 DE 00 0F B7 14 48", 0},
     {"CanChangeToState", "battlefx", ProbeKind::Code, CanChangeToState,
      "48 89 5C 24 10 57 48 83 EC 20 48 8B F9 0F B7 DA 48 8D 0D", 0},
+    {"Minimap reveal-cell", "minimap", ProbeKind::Code, MinimapRevealCell,
+     "48 89 5C 24 10 55 56 57 41 54 41 55 41 56 41 57 48 83 EC 30 0F B6 D9 48 8D 0D ?? ?? ?? ?? 0F B6 FA", 0},
+    {"Minimap seen-bits use", "minimap", ProbeKind::Code, 0x14042FB28, "4C 8B 0D 51 CA DB 04 48 8D 4B F0", 0},
+    {"Minimap grid use", "minimap", ProbeKind::Code, 0x1403105FD, "48 8D 0D 98 AD E9 00 41 B8 00 18 00 00", 0},
+    {"Player position use", "minimap", ProbeKind::Code, 0x140430A03,
+     "48 8B 05 E6 05 A9 00 0F 57 FF 45 0F 57 C0 48 8B 88 50 02 00 00 48 8B 41 48 48 8B 48 18", 0},
     {"AddHP", "battle", ProbeKind::Code, AddHP,
      "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 8B DA 48 8D 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B7 57 08", 0},
     {"AddSP", "battle", ProbeKind::Code, AddSP,

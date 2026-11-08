@@ -16,4 +16,12 @@ bool InDungeon();
 int CurrentFloorId();                   // dungeon floor id, or -1
 void GotoRelativeFloor(int delta);      // dungeon only: +1 next floor, -1 previous
 
+// Minimap auto-reveal: every walkable cell of the current floor is passed to the game's own
+// per-cell reveal (what walking into it does), so the whole floor shows on the minimap.
+bool RevealMapAvailable();              // host probes passed
+bool RevealMapEnabled();
+void SetRevealMap(bool on);
+int RevealedCells(int* total);          // current floor: cells shown / walkable cells (-1 if unknown)
+void Tick();                            // every frame (game thread)
+
 }  // namespace FieldQol

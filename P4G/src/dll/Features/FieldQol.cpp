@@ -6,9 +6,11 @@
 #include "Engine/GameState.h"
 #include "Engine/Addresses.h"
 #include "Engine/GameThread.h"
+#include "Engine/HostCheck.h"
 #include "Engine/SigScan.h"
 #include "Features/Journal.h"
 #include "Util/Log.h"
+#include "Util/Settings.h"
 
 namespace FieldQol {
 
@@ -108,6 +110,113 @@ void GotoRelativeFloor(int delta) {
         if (!Flow::RunSequence(seq, 1, "change floor")) return;
         Journal::Record(delta > 0 ? "Moved to the next floor" : "Moved to the previous floor", nullptr);
     });
+}
+
+// --- Minimap auto-reveal -------------------------------------------------------------------------
+namespace {
+
+constexpr int kMajor = 24, kMinor = 16, kCell = 16;
+bool g_reveal = false;
+bool g_loaded = false;
+int g_frame = 0;
+int g_shown = -1, g_total = 0;
+
+using RevealCellFn = void(__fastcall*)(uint8_t minor, uint8_t major);
+
+const uint8_t* Grid() { return reinterpret_cast<const uint8_t*>(Addr::MinimapGrid); }
+uint8_t CellFlag(int major, int minor) { return Grid()[(major * kMinor + minor) * kCell]; }
+// Open sides (low nibble S/E/N/W). Zero on the unused corners of L-shaped room footprints, which
+// the game never draws.
+uint8_t CellEdges(int major, int minor) { return Grid()[(major * kMinor + minor) * kCell + 0xA]; }
+
+uint16_t* SeenBits() {
+    if (!Sig::Readable(Addr::pMinimapSeen, 8)) return nullptr;
+    auto p = *reinterpret_cast<uintptr_t*>(Addr::pMinimapSeen);
+    if (!p || !Sig::Readable(p, kMajor * 2)) return nullptr;
+    return reinterpret_cast<uint16_t*>(p);
+}
+
+uintptr_t Follow(uintptr_t a, size_t off) {
+    if (!a || !Sig::Readable(a + off, 8)) return 0;
+    return *reinterpret_cast<uintptr_t*>(a + off);
+}
+
+// The player's minimap cell, from the same chain and rounding the game's reveal pass uses.
+bool PlayerCell(int* major, int* minor) {
+    uintptr_t pl = Follow(Follow(Follow(Follow(Addr::pFieldRoot, 0), 0x250), 0x48), 0x18);
+    if (!pl || !Sig::Readable(pl + 0x360, 12)) return false;
+    float x = *reinterpret_cast<float*>(pl + 0x360);
+    float z = *reinterpret_cast<float*>(pl + 0x368);
+    if (!(x >= 0.f && z >= 0.f)) return false;  // also rejects NaN
+    int mi = int((x + 600.f) / 1200.f), ma = int((z + 600.f) / 1200.f);
+    if (mi < 0 || mi >= kMinor || ma < 0 || ma >= kMajor) return false;
+    *major = ma;
+    *minor = mi;
+    return true;
+}
+
+// The grid and the seen bits belong to the floor the player is on: the player stands on a
+// walkable cell the game itself has already revealed, and the grid's outer ring is wall.
+bool FloorLive(uint16_t* seen) {
+    int ma, mi;
+    if (!PlayerCell(&ma, &mi)) return false;
+    if (CellFlag(ma, mi) != 1 || !((seen[ma] >> mi) & 1)) return false;
+    return CellFlag(0, 0) == 2 && CellFlag(kMajor - 1, kMinor - 1) == 2;
+}
+
+void LoadOnce() {
+    if (g_loaded) return;
+    g_loaded = true;
+    g_reveal = Settings::GetInt("field", "revealMinimap", 0) != 0;
+}
+
+}  // namespace
+
+bool RevealMapAvailable() { return HostCheck::GroupOk("minimap"); }
+
+bool RevealMapEnabled() {
+    LoadOnce();
+    return g_reveal;
+}
+
+void SetRevealMap(bool on) {
+    LoadOnce();
+    g_reveal = on;
+    Settings::SetInt("field", "revealMinimap", on ? 1 : 0);
+}
+
+int RevealedCells(int* total) {
+    if (total) *total = g_total;
+    return g_shown;
+}
+
+void Tick() {
+    LoadOnce();
+    if (++g_frame % 10) return;  // a few times a second is plenty
+    g_shown = -1;
+    g_total = 0;
+    if (!RevealMapAvailable() || !InDungeon()) return;
+    if (Sig::Readable(Addr::InBattle, 1) && *reinterpret_cast<const uint8_t*>(Addr::InBattle)) return;
+    uint16_t* seen = SeenBits();
+    if (!seen || !FloorLive(seen)) return;
+    auto reveal = reinterpret_cast<RevealCellFn>(Addr::MinimapRevealCell);
+    int shown = 0, total = 0, done = 0;
+    for (int ma = 1; ma < kMajor - 1; ++ma)
+        for (int mi = 1; mi < kMinor - 1; ++mi) {
+            if (CellFlag(ma, mi) != 1 || !CellEdges(ma, mi)) continue;
+            ++total;
+            if ((seen[ma] >> mi) & 1) {
+                ++shown;
+                continue;
+            }
+            if (!g_reveal) continue;
+            reveal(uint8_t(mi), uint8_t(ma));
+            ++done;
+            if ((seen[ma] >> mi) & 1) ++shown;
+        }
+    g_shown = shown;
+    g_total = total;
+    if (done) LOGI("minimap: revealed %d cell(s), %d/%d shown", done, shown, total);
 }
 
 }  // namespace FieldQol
