@@ -1,124 +1,303 @@
-# P4G / P4R Trainers
+<p align="center">
+  <img src=".github/assets/banner.svg" alt="P4G Trainer, an in-game trainer for Persona 4 Golden" width="100%">
+</p>
 
-In-game trainers for **Persona 4 Golden** (Steam, PC) and, once it's out, the Persona 4
-remake. The trainer opens as an overlay on top of the game. It can change practically any
-game mechanic, and it's careful about it: every change goes through the game's own code
-wherever possible, and anything that could affect the story asks first and explains why.
+<p align="center">
+  <a href="https://github.com/Lala-J/P4G-P4R-Trainers/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Lala-J/P4G-P4R-Trainers?style=for-the-badge&label=release&labelColor=0b0b0b&color=FFE100"></a>
+  <a href="https://store.steampowered.com/app/1113000/"><img alt="For Persona 4 Golden on Steam, game version 1.0.5" src="https://img.shields.io/badge/Persona_4_Golden-Steam_1.0.5-FFE100?style=for-the-badge&logo=steam&logoColor=white&labelColor=0b0b0b"></a>
+  <img alt="Windows, 64-bit" src="https://img.shields.io/badge/Windows-x64-FFE100?style=for-the-badge&labelColor=0b0b0b">
+  <a href="#for-developers"><img alt="Written in C++20" src="https://img.shields.io/badge/C%2B%2B-20-F7941D?style=for-the-badge&logo=cplusplus&logoColor=white&labelColor=0b0b0b"></a>
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/github/license/Lala-J/P4G-P4R-Trainers?style=for-the-badge&labelColor=0b0b0b&color=F7941D"></a>
+</p>
+
+<p align="center">
+  <b>Infinite HP, any item, any Persona, social links, the case calendar,<br>
+  and a dialogue autoplay that actually waits for the voice acting.</b><br>
+  All from an overlay inside the game, and all done through the game's own code.
+</p>
+
+<p align="center">
+  <a href="#install">Install</a> &nbsp;·&nbsp;
+  <a href="#whats-on-the-channel">Features</a> &nbsp;·&nbsp;
+  <a href="#autoplay-for-dialogue">Autoplay</a> &nbsp;·&nbsp;
+  <a href="#playing-it-safe">Safety</a> &nbsp;·&nbsp;
+  <a href="#for-developers">Developers</a>
+</p>
 
 ---
 
-## Part 1 — Using the trainer
+Press **Insert** and the trainer opens on top of whatever you're doing: a boss fight, a dungeon
+floor, a rainy night in Inaba. Change what you like, close it, carry on. It doesn't write to
+your saves, it works with the game's own story checks instead of around them, and anything that
+could trip up the plot tells you why before it happens.
 
-### Persona 4 Golden (Steam)
+First playthrough? Anything past where you are in the story stays hidden behind `???` until you
+choose to look.
 
-**Supported version:** the current Steam release, `P4G.exe` v1.0.5 (64-bit). If the game is
-updated, the trainer recognises that it's a different build and stays switched off instead of
-guessing. The Dashboard says so.
+## Install
 
-#### Install
+<a href="https://github.com/Lala-J/P4G-P4R-Trainers/releases/latest"><img alt="Download the latest release" src="https://img.shields.io/badge/%E2%96%B6%E2%96%B6%E2%96%B6_Download-latest_release-FFE100?style=for-the-badge&labelColor=0b0b0b"></a>
 
-Download `P4GTrainer-vX.Y.Z.zip` from the
-[latest release](https://github.com/Lala-J/P4G-P4R-Trainers/releases/latest) (or build it
-yourself, Part 2). The zip has an `Autoload` folder and a `Manual` folder; pick one:
+You need the Steam version of Persona 4 Golden, game version 1.0.5 (the current one). Download
+`P4GTrainer-vX.Y.Z.zip` from the release page. It has two folders; pick whichever suits you.
 
-**A. Autoload (starts with the game every time).** Copy `dinput8.dll` and `P4GTrainer.dll`
-from `Autoload` into the game folder (Steam → Persona 4 Golden → Manage → Browse local files), next to `P4G.exe`.
-Start the game as usual; the trainer loads by itself a few seconds after the window appears.
-- `dinput8.dll` is a small loader. The game loads it in place of the Windows DLL of that name;
-  it passes everything through to the real one, then loads `P4GTrainer.dll` from the same folder.
-- If the game has been updated and the trainer doesn't recognise it, the trainer stays dormant
-  and the game runs as normal. If `P4GTrainer.dll` is missing, nothing is loaded at all.
-- To start the game without the trainer: untick *Load automatically with the game* on the
-  trainer's Settings page (takes effect next start). To uninstall: remove the two files.
-- Steam's "verify integrity of game files" doesn't touch them (they aren't part of the game).
+**Autoload** starts with the game every time. This is the one most people want.
 
-**B. Manual (on demand).** Put `P4GTrainer.exe` and `P4GTrainer.dll` from `Manual` in any
-folder, together. Start the game, then run `P4GTrainer.exe` once you're at the title screen or
-in game.
-- `P4GTrainer.exe --wait` waits for the game to start and then loads.
-- `P4GTrainer.exe --eject` unloads the trainer; `--reload` swaps in a newer build (this also works
-  with the drop-in).
+1. In Steam, right-click Persona 4 Golden → **Manage** → **Browse local files**.
+2. Copy `dinput8.dll` and `P4GTrainer.dll` from the zip's `Autoload` folder next to `P4G.exe`.
+3. Play as usual. A few seconds after the game window appears, press **Insert**.
 
-In game, press **Insert**, or **Back + R3** on a controller, to open or close the trainer. Both
-can be changed on the Settings page (keys the game itself uses are never offered).
+**Manual** loads it only when you ask.
 
-While the trainer is open the game receives no input at all: no keys, clicks, mouse movement
-or controller buttons reach it, and anything still held when you close the trainer stays
-hidden from the game until you let go. Inside the trainer, **LB / RB** (or Page Up / Page Down)
-switch pages, and **Esc** or **Start** closes it. Mouse, keyboard and controller all work
-everywhere.
+1. Put `P4GTrainer.exe` and `P4GTrainer.dll` from the `Manual` folder anywhere, side by side.
+2. Start the game, then run `P4GTrainer.exe` (at the title screen or in game, either works).
+   `--wait` waits for the game to start first; `--eject` unloads it again.
 
-Good to know:
+> [!TIP]
+> Updating? Close the game and swap in the new files. Your settings carry over.
 
-- Changes that touch what the game is doing right now (the Persona stock, shop and Velvet Room
-  shortcuts, floor changes) only run while you're free-roaming. Otherwise the button says why
-  not, e.g. "Not during a battle".
-- Dialogue auto-advance only ever presses Confirm in the conversation box, never on a choice,
-  menu, tutorial or pop-up. Voiced lines play to the end first (then 1.5 s); unvoiced lines
-  wait 2.8 s. Press **A** during a conversation to turn it on or off (the key can be changed
-  on the Field & Dungeon page; everywhere else A still does what the game uses it for). While
-  it's on, *Autoplay On* shows above the conversation box. Holding any key pauses it, and it
-  waits while the trainer is open.
-- Toggles (battle overrides, never-run-out items, minimap reveal, auto-advance, EXP options)
-  are remembered between sessions in `%LOCALAPPDATA%\P4GTrainer\settings.ini`.
+<details>
+<summary>How Autoload works, and how to turn it off</summary>
+<br>
 
-The first time the trainer loads in a session it copies your save folder to
-`%LOCALAPPDATA%\P4GTrainer\backups\<date-time>\`. The trainer never writes save files itself.
+`dinput8.dll` is a tiny loader. The game picks it up in place of the Windows DLL with the same
+name, it hands everything on to the real one, and then it loads `P4GTrainer.dll` from the same
+folder.
 
-#### What it does
+- For a session without the trainer, untick **Load automatically with the game** on the
+  trainer's Settings page. It applies from the next start.
+- To uninstall, remove the two files. Steam's "Verify integrity of game files" leaves them
+  alone, since they aren't part of the game.
+- If the game gets an update the trainer doesn't recognise, the trainer stays switched off and
+  the game runs normally.
+</details>
 
-| Page | What you get | Status |
+### Controls
+
+| | Keyboard | Controller |
 |---|---|---|
-| Dashboard | Today's date and time slot, the case deadline, links ready to rank up, your stats | ✅ |
-| Today | Everything you can do in the current time slot and where to find it, ordered by priority: last chances, romance, social links and hangouts, clubs and jobs, everything else | ✅ |
-| Battle | Infinite HP (no damage, or never below 1) and infinite SP, per member HP/SP, refill | ✅ |
-| Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee (wired to the shadows' own run-away AI; not yet seen live) | ✅ |
-| Inventory | Every item in the game by category, set counts through the game's own routine, items that never run out in battle or the camp menu | ✅ |
-| Personas | Yu's stock and every party member's Persona; edit stats and skills | ✅ |
-| Personas (more) | Get any Persona Yu can hold (base form), remove one, summon from the compendium (with or without the fee), save to the compendium; fusion preview from the game's own fusion; fuse ultimates before their link is maxed | ✅ |
-| Social Links | Rank and points against the game's own thresholds for every link, "ready to rank up", locked-out pairs, spoiler-hidden unmet links | ✅ |
-| Social Links (edits) | Rank-ups that also replay the link's own story effects, "ready at next hangout", with prerequisite warnings | ✅ |
-| Romance | Pick a partner by portrait and follow a step-by-step route; every step stays hidden until you reveal it | ✅ |
-| Case File | The current case, its deadline, days left, and the case timeline; every rescue read from the game's own flags | ✅ |
-| Protagonist | Level and EXP; Courage, Knowledge, Diligence, Understanding, Expression with ranks; money; equipment for Yu and the party (what each can wield, from the bag) | ✅ |
-| Levels & EXP | Levels and EXP for Yu, party members and every Persona, using the game's own level-up routines | ✅ |
-| Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel; every shadow you've met with its level, stats, skills and drops | ✅ |
-| NG+ & Unlocks | New Game+ carry-overs one at a time: social stats, money, the whole compendium, the New Game+ Persona | ✅ |
-| Field & Dungeon | Shops and the Velvet Room from anywhere in town, next / previous floor, return to the entrance (Goho-M), party changes, the Fox's SP recovery, the whole floor revealed on the minimap, save anywhere, auto-advance for dialogue, a guard against a game crash at some staircases | ✅ |
-| Advanced | Undo journal for every change | ✅ |
-| Advanced (more) | Browser for the game's event flags and counters, with known meanings, "changed since opened", and journaled edits | ✅ |
+| Open / close the trainer | `Insert` | `Back` + `R3` |
+| Switch pages | `Page Up` / `Page Down` | `LB` / `RB` |
+| Close | `Esc` | `Start` |
+| Autoplay on / off, during a conversation | `A` | |
 
-#### Safety
+The mouse works everywhere too, and all of these can be rebound. While the trainer is open the
+game gets none of your input (keys, clicks, mouse movement, controller), so nothing you do in
+the trainer can pick a menu option behind it.
 
-- **Risk levels.** Every control is marked *Safe*, *Caution*, *Story-sensitive* or
-  *Dangerous*. The last two open a confirmation that says exactly what will change and what
-  could go wrong.
-- **Warnings that make sense.** The trainer warns about things that don't fit the story. For
-  example, maxing a social link you haven't met yet, or one the story only advances by itself.
-  It tells you what's missing, and lets you go ahead anyway.
-- **Undo.** Changes are journaled and can be undone.
-- **Spoilers.** Anything past your current point in the story is shown as `???` until you
+## What's on the channel
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### ⚔️ Battle
+
+- Infinite HP (take no damage, or just never drop below 1) and infinite SP
+- No knock-downs or ailments on your party
+- Enemies always miss; your party never misses and always crits
+- Forced 1 More, unlimited Persona swaps, a weakness override
+- Shadows can't run away
+
+</td>
+<td width="50%" valign="top">
+
+### 🎒 Items & gear
+
+- Every item in the game, sorted by category
+- Set any count, through the game's own item routine
+- Items that never run out, in battle or from the camp menu
+- Equipment for Yu and the party, showing only what each of them can wield
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🃏 Personas
+
+- Edit stats and skills, for Yu's Personas and the party's
+- Get any Persona Yu could hold, or let one go
+- Summon from the compendium (fee optional) or register to it
+- Fusion preview, worked out by the game's own fusion
+- Fuse ultimates before their link is maxed
+
+</td>
+<td valign="top">
+
+### 💛 Social links & romance
+
+- Every link's rank and points, measured against the game's own thresholds
+- "Ready to rank up" and "ready at the next hangout" at a glance
+- Rank-ups that replay the link's own story effects, so the next hangout picks up where it should
+- A romance guide: choose a partner by portrait and follow the route one step at a time, each step hidden until you reveal it
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 📅 Planning
+
+- **Dashboard:** the date, time of day, case deadline and links ready to rank up
+- **Today:** everything you can do right now and where, last chances first
+- **Case File:** the current case, days left and the timeline, read from the game's own flags
+- **Protagonist:** Yu's level, the five social stats with their ranks, money
+- **Levels & EXP:** for Yu, the party and every Persona, through the game's level-up code
+
+</td>
+<td valign="top">
+
+### 🗺️ Field & dungeon
+
+- Shops and the Velvet Room from anywhere in town
+- Next or previous floor, back to the entrance, party changes, the Fox's SP refill
+- The whole floor revealed on the minimap
+- Save anywhere
+- A guard against a crash in the base game at some staircases
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🔍 Enemy intel
+
+- Every enemy's affinities filled in on the game's own Analysis screen
+- A small in-battle panel with the same information
+- A record of every Shadow you've met: level, stats, skills and drops
+
+</td>
+<td valign="top">
+
+### 🛠️ Extras
+
+- **NG+ & unlocks:** New Game+ carry-overs, one at a time
+- **Undo:** every change is journaled and can be rolled back
+- **Advanced:** a browser for the game's event flags and counters, with known meanings and "changed since opened"
+
+</td>
+</tr>
+</table>
+
+## Autoplay for dialogue
+
+Turn it on, put the controller down, and let the scene play out.
+
+- **Voiced lines play to the end.** Autoplay watches the game's audio engine and only moves on
+  once the voice clip has finished, then gives you 1.5 seconds.
+- **Unvoiced lines and narration** wait 2.8 seconds once the text is fully on screen. Both
+  timings can be changed.
+- **Only the conversation box.** Choices, menus, tutorials and pop-ups are always left to you.
+- **Press `A` during a conversation** to switch it on or off. *Autoplay On* shows above the box
+  while it's running. Outside conversations A does what it always does, and you can pick a
+  different key on the Field & Dungeon page.
+- Holding any key pauses it, and it waits while the trainer is open.
+
+## Playing it safe
+
+> [!IMPORTANT]
+> The first time the trainer loads in a session, it copies your save folder to
+> `%LOCALAPPDATA%\P4GTrainer\backups\`. It never writes save files itself.
+
+- **Risk levels on everything.** Each control is marked *Safe*, *Caution*, *Story-sensitive*
+  or *Dangerous*. The last two ask first, and say exactly what will change and what could go
+  wrong.
+- **Warnings that make sense.** Maxing a link you haven't met yet, or one only the story should
+  move? It tells you what's missing, then lets you go ahead anyway.
+- **Undo** for every change.
+- **No spoilers by default.** Anything past your point in the story shows as `???` until you
   reveal that one item.
-- **Things it deliberately doesn't do:** change the date, loop days, unlock the whole town map,
-  "complete all quests", or start arbitrary events. They break the game's scheduler or skip
-  rewards in ways that can't be repaired. It also doesn't mark a playthrough as New Game+ (the
-  story checks that in many places), and it doesn't lift the fusion level cap: the game checks
-  Yu's level in a dozen places, so instead you can get a higher-level Persona directly.
+- **Checks the game first.** When it loads, the trainer verifies the game build and every
+  address it relies on. Anything it doesn't recognise stays switched off.
+- **Free-roam only, where it matters.** Features that touch what's happening on screen right
+  now (the Persona stock, shop shortcuts, floor changes) only run while you're free-roaming;
+  otherwise the button tells you why not.
 
-### Persona 4 remake (P4R)
+<details>
+<summary>Things it won't do, on purpose</summary>
+<br>
 
-The trainer for the remake will be here when the game comes out.
+- **Change the date, repeat days or start arbitrary events.** The calendar and the story
+  scripts don't recover from that.
+- **Unlock the whole town map or "complete all quests".** Both skip rewards the scripts are
+  meant to hand out.
+- **Mark the playthrough as New Game+.** The story checks that in a lot of places.
+- **Lift the fusion level cap.** The game checks Yu's level in a dozen places. You can get a
+  higher-level Persona directly instead.
+</details>
+
+<details>
+<summary>Known gaps</summary>
+<br>
+
+- *Shadows can't run away* is wired into the Shadows' own run-away logic, but hasn't been seen
+  in action yet: only the rare Hand Shadows try it.
+- The rescue flags for later cases come from the game's scripts. Only the first has been
+  checked live.
+- The files aren't code-signed, so Windows SmartScreen or an antivirus may flag them. The source
+  is all here, and you can build it yourself (see below).
+</details>
+
+Settings are kept in `%LOCALAPPDATA%\P4GTrainer\settings.ini`. If something breaks,
+[open an issue](https://github.com/Lala-J/P4G-P4R-Trainers/issues) and attach
+`%LOCALAPPDATA%\P4GTrainer\logs\P4GTrainer.log`.
+
+## Persona 4 remake
+
+The remake gets its own trainer once it's out and there's something to look at. It will live
+in [`P4R/`](P4R/). The two games share a story but not an engine, so expect a fresh build
+rather than a port.
 
 ---
 
-## Part 2 — For developers
+## For developers
 
-### Layout
+Everything builds from source with free tools.
+
+### Building
+
+You'll need Windows 10 or 11, Visual Studio 2022 or newer with the *Desktop development with
+C++* workload, Git for Windows (for Git Bash) and Python 3.
+
+```bash
+cd P4G
+bash tools/fetch_deps.sh      # Dear ImGui and MinHook at pinned commits, into P4G/third_party/
+bash tools/build.sh release   # or: debug
+```
+
+`build.sh` finds Visual Studio with `vswhere` and the Windows SDK through the registry, so
+there are no paths to configure. It builds the DLL, the injector and the `dinput8.dll` loader,
+runs the self-test and the public-repo check, and stages everything in `P4G/dist/`. To run the
+public-repo check on every commit as well: `git config core.hooksPath .githooks`.
+
+### How it's put together
+
+- **Fail closed.** `HostCheck` verifies the executable, its build timestamp and section layout,
+  then checks every entry in `Addresses.h` against the bytes it expects. An unknown build
+  leaves the trainer dormant; a failed check only disables the features that depend on it.
+- **Provenance.** Every address says where it came from: `[DRV]` derived here by disassembly,
+  `[MOD:<repo>]` from a public mod, `[CT:<table>]` from a Cheat Engine table. All of them are
+  re-verified against the target build before use.
+- **Game code first.** Changes go through the game's own functions, or replay exactly what its
+  scripts do. Raw memory writes are the last resort, and only for plain values.
+- **The protector.** P4G's real code lives in `.shared`; `.arch` holds the protector's
+  virtualised code. Functions that jump into `.arch` may be called but are never hooked.
+- **Threads.** The UI never touches game memory. Changes are queued and applied on the game's
+  own thread.
+
+What's been verified in the game is written up in [`P4G/docs/data/`](P4G/docs/data/) (input,
+dialogue boxes and voices, case flags, link events, the minimap and more), and the research the
+address table is built on is in [`P4G/docs/research/`](P4G/docs/research/).
+
+<details>
+<summary>Repository layout</summary>
 
 ```
 README.md, LICENSE           this file; MIT licence
+.github/assets/              the banner
 tools/check_public.py        blocks commits containing local paths, account ids, emails, keys or game assets
-.githooks/pre-commit         runs check_public on staged files (opt-in, see below)
+.githooks/pre-commit         runs check_public on staged files (opt-in)
 P4G/
   src/dll/                   the trainer (injected DLL)
     Engine/                  Addresses.h (audited address table), HostCheck, SigScan, SaveBackup,
@@ -128,91 +307,63 @@ P4G/
                              SocialLinks, Levels, FieldQol, AutoAdvance, EnemyIntel, Journal, ...)
     Data/                    small tables: links, cases, romance routes, today's activities,
                              generated link side effects (*.inc)
-    Hooks/                   MinHook wrapper, D3D11 Present, input (DirectInput8, XInput, window, wheel)
+    Hooks/                   MinHook wrapper, D3D11 Present, input (DirectInput8, XInput, the game's
+                             pad read, window, wheel)
     UI/                      overlay, theme, shell, portraits and pages
     Core/, Util/             lifecycle, logging, paths, settings, CPK/PAK/TMX readers
   src/injector/              P4GTrainer.exe (attach / eject / hot-swap)
   src/proxy/                 dinput8.dll: the game-folder loader (forwards to the system dinput8,
                              then loads P4GTrainer.dll once the game window is up)
   src/tests/                 headless self-test, run by the build
-  tools/                     env.sh, build.sh, fetch_deps.sh
+  tools/                     env.sh, build.sh, fetch_deps.sh, package.sh
   tools/re/                  read-only reverse-engineering helpers and test drivers (screenshots,
                              keys, clicks, title screen, auto-fight; they refuse to act on save screens)
   tools/datamine/            CPK and flowscript readers that mine social link side effects from the
                              player's own data files (output: src/dll/Data/*.inc, docs/data/)
   docs/research/             research notes the address table and rules are based on
-  docs/data/                 what was verified in the game: case flags, link events, minimap, ...
-P4R/                         placeholder
+  docs/data/                 what was verified in the game
+P4R/                         placeholder for the remake
 ```
+</details>
 
-### Building
+<details>
+<summary>Making a release</summary>
+<br>
 
-Requirements: Windows 10/11, Visual Studio 2022 or newer with the *Desktop development with
-C++* workload, Git for Windows (for Git Bash), and Python 3 for the checks and tools.
-
-```bash
-cd P4G
-bash tools/fetch_deps.sh      # Dear ImGui and MinHook, at pinned commits, into P4G/third_party/
-bash tools/build.sh release   # or: debug
-```
-
-`build.sh` finds Visual Studio with `vswhere` and the Windows SDK through the registry, so no
-paths need to be configured. It builds the DLL, the injector and the `dinput8.dll` loader, runs the self-test and the
-public-repo check, and stages `P4G/dist/`.
-
-To have the public-repo check run on every commit:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-### How the trainer is put together
-
-- **Fail closed.** `HostCheck` verifies the executable, its build timestamp and section layout,
-  then checks each entry in `Addresses.h` against expected bytes. An unknown build leaves the
-  trainer dormant. A failed probe disables only the features that depend on it.
-- **Provenance.** Every address in `Addresses.h` says where it came from: `[DRV]` derived
-  here by disassembly, `[MOD:<repo>]` from a public mod, `[CT:<table>]` from a Cheat Engine
-  table. All of them are re-verified against the target build before use.
-- **Game code first.** Changes are made by calling the game's own functions, or by replaying
-  exactly what the game's scripts do. Raw memory writes are the last resort, and only for
-  plain values.
-- **The protector.** P4G's real code lives in `.shared`. `.arch` holds the protector's
-  virtualised code. Functions that jump into `.arch` may be called but are never hooked.
-- **Threads.** The UI never touches game memory directly. Changes are queued and applied on
-  the game's own thread.
-
-### Releases
-
-Versions follow [semantic versioning](https://semver.org/); the current one is in
-`P4G/VERSION` and is shown on the trainer's About page, in its log and by `P4GTrainer.exe`.
+Versions follow [semantic versioning](https://semver.org/). The current one is in
+`P4G/VERSION`, and shows up on the trainer's About page, in its log and in `P4GTrainer.exe`.
 
 1. Bump `P4G/VERSION` (patch for fixes, minor for new features) and commit.
-2. `bash P4G/tools/package.sh` builds a release and writes `P4G/build/package/`:
-   `P4GTrainer-vX.Y.Z.zip` (the `Autoload` and `Manual` folders, `INSTALL.txt`, README, LICENSE)
-   and `P4GTrainer-vX.Y.Z-symbols.zip` (the matching `.pdb` files, for reading crash reports).
-   It refuses uncommitted changes and fails if a binary contains a local path.
+2. Run `bash P4G/tools/package.sh`. It builds a release and writes `P4G/build/package/`:
+   `P4GTrainer-vX.Y.Z.zip` (the `Autoload` and `Manual` folders, `INSTALL.txt`, README and
+   LICENSE) and `P4GTrainer-vX.Y.Z-symbols.zip` (the matching `.pdb` files, for crash reports).
+   It refuses uncommitted changes, and fails if a binary contains a local path.
 3. Tag `vX.Y.Z`, push, and attach both zips to a GitHub release.
+</details>
 
 ### Contributing
 
-- **Keep the repo public-safe.** Don't commit absolute paths, user names, account ids, emails
-  or keys. Discover locations at run time. `tools/check_public.py` enforces this.
+- **Keep it public-safe.** No absolute paths, user names, account ids, emails or keys; discover
+  locations at run time. `tools/check_public.py` enforces this.
 - **No game content.** No executables, extracted files, scripts, textures or portraits. Facts
-  derived from the game, like flag numbers and addresses, are fine. Names and images are read
-  from the player's own installation at run time.
-- **No deletions in scripts.** The build overwrites in place and moves stale files to
-  `.trash/`, which is git-ignored.
-- **Verify before trusting.** New addresses need a probe in `Addresses.h` and a provenance tag.
-- **Test.** Build with `tools/build.sh`, then try your change in the game. Read the log in
+  about the game, like flag numbers and addresses, are fine. Names and images are read from the
+  player's own install at run time.
+- **No deletions in scripts.** The build overwrites in place and moves stale files to `.trash/`,
+  which is git-ignored.
+- **Verify before trusting.** A new address needs a check in `Addresses.h` and a provenance tag.
+- **Test it in the game.** Build with `tools/build.sh`, try the change, and read the log in
   `%LOCALAPPDATA%\P4GTrainer\logs\`.
 
 ### Credits
 
 Built on [Dear ImGui](https://github.com/ocornut/imgui) (MIT) and
-[MinHook](https://github.com/TsudaKageyu/minhook) (BSD-2). The research behind the address
-table and the game rules draws on the Persona modding community. Thanks to AnimatedSwine37,
-AquaRose7, zarroboogs, tge, ShrineFox, rirurin, seyleonhart, DeathChaos25, qSleeP and the
-authors of the Megami Tensei wikis. Their sources are linked in `P4G/docs/research/`.
+[MinHook](https://github.com/TsudaKageyu/minhook) (BSD-2). The address table and the game rules
+lean on years of work by the Persona modding community: thanks to AnimatedSwine37, AquaRose7,
+zarroboogs, tge, ShrineFox, rirurin, seyleonhart, DeathChaos25, qSleeP and the authors of the
+Megami Tensei wikis. Their sources are linked in `P4G/docs/research/`.
 
-Persona 4 Golden is © ATLUS / SEGA. This project is not affiliated with them.
+---
+
+<p align="center">
+  <sub>MIT licensed. Persona 4 Golden is © ATLUS / SEGA. This is a fan project and isn't affiliated with or endorsed by them.</sub>
+</p>
