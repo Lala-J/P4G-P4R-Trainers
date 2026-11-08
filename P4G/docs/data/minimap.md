@@ -8,7 +8,7 @@ Verified live on a generated floor (Yukiko's Castle 3F), Steam build 1.0.5.
 
 | Offset | Meaning |
 |---|---|
-| +0x00 | 0 outside the floor, 1 walkable, 2 wall. The outer ring is always 2 (set when the floor is built). |
+| +0x00 | 0 outside the floor, 1 walkable, 2 wall. Some floors have a wall ring around the grid, others don't (Yukiko's Castle 5F). |
 | +0x01 | high nibble: position inside a multi-cell room (0 corner, 1 edge, 2 inner); low nibble: room anchor |
 | +0x02 | u16 tile / room model id |
 | +0x04 | room shape type (1 corridor, 2 2x2, 5 dead end, 6 junction, 8, 0x0B / 0x0C 3x3 …) |
@@ -38,5 +38,5 @@ is open).
 
 The trainer's "Reveal the whole floor" calls the same function for every walkable cell with at
 least one open side, on the game thread, a few times a second. It runs only when the player's own
-cell is walkable and already revealed by the game, so the grid and the bits are known to belong to
-the floor the player is on. Nothing is saved: floors are rebuilt on every visit.
+cell is a walkable room cell (non-zero room id) already revealed by the game, so the grid and the
+bits are known to belong to the floor the player is on. Nothing is saved: floors are rebuilt on every visit.

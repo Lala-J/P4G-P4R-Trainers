@@ -71,6 +71,10 @@ constexpr uint16_t FLD_UNLOAD = 0x1024;  // FLD_FUNCTION_0024: field scripts cal
 constexpr uint16_t GET_FIELD_MAJOR = 0x1022;
 constexpr uint16_t GET_FIELD_MINOR = 0x1023;
 constexpr uint16_t GOTO_REL_FLOOR = 0x1001;
+constexpr uint16_t CALL_DUNGEON = 0x003F;  // (floor, arrival 0 = from below / 1 = from above)
+constexpr uint16_t RESET_FLOOR = 0x1003;   // dungeon.bf common_floor_change runs it before every floor change
+constexpr uint16_t PLAY_SYS_SOUNDEFFECT = 0x0023;
+constexpr uint16_t PLAY_SOUNDEFFECT = 0x0071;
 constexpr uint16_t GET_FLOOR_ID = 0x1002;  // library name EVT_FUNCTION_0016: spawns the "commu open" card task
 constexpr uint16_t GET_SL_LEVEL = 0x3003;
 constexpr uint16_t INCREASE_SL = 0x3004;

@@ -48,14 +48,21 @@ void FieldDungeon() {
 
     SectionHeader("DUNGEON");
     W::Dim("While exploring a dungeon:");
-    ImGui::BeginDisabled(!dungeon);
+    const char* whyUp = FieldQol::WhyNotChangeFloor(1);
+    const char* whyDown = FieldQol::WhyNotChangeFloor(-1);
+    ImGui::BeginDisabled(whyUp != nullptr);
     if (W::RiskButton("Next floor", Risk::Caution,
-                      "Moves up one floor, as the stairs would. Floors you skip aren't explored or looted."))
+                      "Goes up one floor with the same steps as the stairs (fade out, then the floor change). "
+                      "Floors you skip aren't explored or looted."))
         FieldQol::GotoRelativeFloor(1);
+    ImGui::EndDisabled();
     ImGui::SameLine();
-    if (W::RiskButton("Previous floor", Risk::Caution, "Moves down one floor."))
+    ImGui::BeginDisabled(whyDown != nullptr);
+    if (W::RiskButton("Previous floor", Risk::Caution, "Goes down one floor, as the stairs down would."))
         FieldQol::GotoRelativeFloor(-1);
     ImGui::EndDisabled();
+    if (dungeon && whyDown && !whyUp) W::Dim("%s", whyDown);
+    if (dungeon && FieldQol::CurrentFloorIdCached() >= 0) W::Dim("Floor id %d.", FieldQol::CurrentFloorIdCached());
     ImGui::EndDisabled();
 
     SectionHeader("MINIMAP");
