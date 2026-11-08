@@ -49,14 +49,10 @@ void FieldDungeon() {
 
     SectionHeader("DUNGEON");
     W::Dim("While exploring a dungeon:");
-    if (dungeon && FieldGuard::LeaderOutsideRoom()) {
-        ImGui::PushTextWrapPos(0);
-        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Orange),
-                           "The party is stuck outside the floor's rooms (for example behind the end of a "
-                           "staircase). The game would crash here; the trainer is holding it off. Use Next or "
-                           "Previous floor below, or a Goho-M, to get out.");
-        ImGui::PopTextWrapPos();
-    }
+    if (FieldGuard::Rescues() || FieldGuard::Fired())
+        W::Dim("Crash guard: the party was moved back onto the floor %d time(s) this session (some staircases "
+               "let you walk through their back end, which crashes the unmodified game).",
+               FieldGuard::Rescues());
     const char* whyUp = FieldQol::WhyNotChangeFloor(1);
     const char* whyDown = FieldQol::WhyNotChangeFloor(-1);
     ImGui::BeginDisabled(whyUp != nullptr);

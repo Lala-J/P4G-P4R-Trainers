@@ -1,6 +1,7 @@
 #include "Features/BattleOverrides.h"
 
 #include <cstdint>
+#include <cstdio>
 
 #include "Engine/Addresses.h"
 #include "Engine/GameTypes.h"
@@ -194,7 +195,25 @@ bool InstallHooks() {
     return ok;
 }
 
+// Trace mode only: once per battle, ask the game's affinity function (through the hook, as the
+// battle code does) how Yu takes each element, next to the game's own unhooked answer.
+void AffinitySelfTest() {
+    static uintptr_t lastMgr = 0;
+    uintptr_t mgr = *reinterpret_cast<const uintptr_t*>(Addr::pBattleMgr);
+    if (!Trace::Enabled() || !o_Aff || mgr == lastMgr) return;
+    lastMgr = mgr;
+    auto* yu = reinterpret_cast<Game::Unit*>(Addr::SaveBlock + Game::Off::Units);
+    auto hooked = reinterpret_cast<Aff_t>(Addr::GetAffinityResult);
+    char buf[512];
+    int n = snprintf(buf, sizeof buf, "trace: affinity self-test (Yu, element: game -> with trainer):");
+    for (short e = 0; e <= 15 && n < int(sizeof buf) - 32; ++e)
+        n += snprintf(buf + n, sizeof buf - n, " %d:%08X->%08X", e, o_Aff(yu, e), hooked(yu, e));
+    LOGI("%s", buf);
+}
+
 void Tick() {
+    if (Sig::Readable(Addr::pBattleMgr, 8) && *reinterpret_cast<const uintptr_t*>(Addr::pBattleMgr))
+        AffinitySelfTest();
     if (!(g_o.noDebuffs || g_o.noAilments || g_o.noDowns)) return;
     if (!Sig::Readable(Addr::pBattleMgr, 8) || !*reinterpret_cast<const uintptr_t*>(Addr::pBattleMgr)) return;
     auto* units = reinterpret_cast<Game::Unit*>(Addr::SaveBlock + Game::Off::Units);

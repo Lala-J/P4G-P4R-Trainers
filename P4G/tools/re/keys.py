@@ -53,9 +53,27 @@ def send(scan, ext, up):
     user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
 
 
+class NotInFront(RuntimeError):
+    pass
+
+
+def _ensure_game_front():
+    """Every key goes to the game or nowhere: bring the game to the front if needed, and refuse
+    if it can't be (so keystrokes never land in another application)."""
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from gamewin import bring_to_front, find_window, is_foreground
+    h = find_window()
+    if is_foreground(h):
+        return
+    if not (h and bring_to_front(h) and is_foreground(h)):
+        raise NotInFront("the game is not the foreground window; no key sent")
+
+
 def press(name, hold_ms=200):
     v = SCAN[name.lower()]
     scan, ext = (v if isinstance(v, tuple) else (v, False))
+    _ensure_game_front()
     send(scan, ext, False)
     time.sleep(hold_ms / 1000)
     send(scan, ext, True)

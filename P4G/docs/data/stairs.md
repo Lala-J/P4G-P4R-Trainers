@@ -34,19 +34,23 @@ trainer), otherwise `GOTO_REL_FLOOR(-1)`.
 
 The game crashes (`P4G.exe+0x32A94B`, null dereference) when a field object's collision step
 (`0x14032A200`) runs while the object stands in a cell that belongs to no room: it looks the room up
-from the grid, gets nothing, and uses it anyway. Every crash seen had the party leader just past the
-end of a staircase, inside the wall cell behind it (e.g. x 17402 / y −137 when the walkable stairs
-end at y −108, 360 units earlier).
+from the grid, gets nothing, and uses it anyway.
 
-- Three crashes followed a floor change made with `GOTO_REL_FLOOR` alone (no `RESET_FLOOR`) and a
-  walk straight back into the arrival stairs. The floor buttons now replay the stairs procedures in
-  full, which is what the game does in any case.
-- One more happened on a floor entered through the gate, after a battle, with no trainer floor
-  change. It could not be reproduced: ~800 random steps at the same stairs, with and without the
-  trainer, never left the walkable area.
+**Cause (confirmed live):** the back end of some staircases isn't solid. Walking into it carries the
+party past the end of the stairs into the wall cell behind and on into the void (seen on Yukiko's
+Castle 1F and 4F, on floors entered through the gate and through the trainer's floor buttons alike).
+In the unmodified game the next collision step then crashes. It is position-dependent and rare: one
+random walk of ~170 steps reached it, others of ~800 did not.
 
-Because the cause of the second kind is not known, the trainer guards the collision step itself
-(`Features/FieldGuard`): with no room it returns 0, which the game already returns when a probe
-blocks a move, so nothing moves that frame instead of crashing. It logs every occurrence with the
-leader's position, and the Field page tells the player how to get out. Tested by putting the leader
-into the wall cell behind the 1F stairs: the guard fired 171 times in 5 seconds, no crash.
+**Guard (`Features/FieldGuard`):**
+- the collision step returns 0 instead of dereferencing a null room, so nothing crashes;
+- every frame the trainer remembers where the leader last stood on a room cell and, the moment the
+  leader stands in a wall cell, puts it back there (or in the middle of the nearest room cell if
+  there is no such point yet). In practice the back end of the staircase then acts like a wall.
+
+Verified: the party walked out on 4F (the guard caught 752 collision steps that would each have
+crashed), was moved back onto the floor, and in a further 257-step walk that pushed into the same
+spot 22 times was held at the edge each time. No crash.
+
+The floor buttons replay the stairs procedures in full in any case (see above); that matches what
+the game does but was not, on its own, the fix.

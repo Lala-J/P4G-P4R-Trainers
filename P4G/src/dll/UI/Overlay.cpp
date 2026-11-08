@@ -9,6 +9,7 @@
 
 #include "Engine/GameThread.h"
 #include "Features/AutoAdvance.h"
+#include "Features/FieldGuard.h"
 #include "Features/FieldQol.h"
 #include "Features/BattleOverrides.h"
 #include "Features/Trace.h"
@@ -175,6 +176,7 @@ void OnPresent(IDXGISwapChain* sc) {
     BattleFx::Tick();
     AutoAdvance::Tick();
     FieldQol::Tick();
+    FieldGuard::Tick();
     Trace::Tick();
     if (!g_ready && (g_initFailed || !Init(sc))) return;
 
