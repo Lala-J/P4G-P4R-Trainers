@@ -243,9 +243,9 @@ Settings are kept in `%LOCALAPPDATA%\P4GTrainer\settings.ini`. If something brea
 [open an issue](https://github.com/Lala-J/P4G-P4R-Trainers/issues) and attach
 `%LOCALAPPDATA%\P4GTrainer\logs\P4GTrainer.log`.
 
-## Persona 4 remake
+## Persona 4 Revival
 
-The remake gets its own trainer once it's out and there's something to look at. It will live
+The remake (P4R) gets its own trainer once it's out and there's something to look at. It will live
 in [`P4R/`](P4R/). The two games share a story but not an engine, so expect a fresh build
 rather than a port.
 
