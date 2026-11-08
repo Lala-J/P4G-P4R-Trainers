@@ -134,14 +134,16 @@ bool Eject(DWORD pid, HANDLE proc) {
             return false;
         }
     }
-    for (int i = 0; i < 100; ++i) {
+    // The trainer frees itself only once none of its hooks is running (it waits up to ~2 min).
+    for (int i = 0; i < 1300; ++i) {
         if (TrainerModules(pid).empty()) {
             Say(L"Unloaded.");
             return true;
         }
+        if (i == 30) Say(L"  waiting for the game to finish what it's doing ...");
         Sleep(100);
     }
-    Say(L"The trainer did not unload within 10 s. See the log in %%LOCALAPPDATA%%\\P4GTrainer\\logs.");
+    Say(L"The trainer did not unload. See the log in %%LOCALAPPDATA%%\\P4GTrainer\\logs.");
     return false;
 }
 

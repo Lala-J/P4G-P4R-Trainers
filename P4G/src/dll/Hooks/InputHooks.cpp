@@ -43,7 +43,7 @@ uint8_t ConfirmDik() {
     g_confirmDik = 0x39;  // Space, the default
     wchar_t path[MAX_PATH];
     if (GetEnvironmentVariableW(L"LOCALAPPDATA", path, MAX_PATH)) {
-        std::wstring ini = std::wstring(path) + L"\SEGA\P4G\P4G.ini";
+        std::wstring ini = std::wstring(path) + L"\\SEGA\\P4G\\P4G.ini";
         wchar_t v[128] = {};
         GetPrivateProfileStringW(L"ActionConfig", L"Action04", L"", v, 128, ini.c_str());
         // e.g. "3-16384,0-0,1-57,1-28": the first "1-n" is the keyboard key
@@ -358,6 +358,7 @@ bool InstallWndProc(HWND hwnd) {
     g_origProc = reinterpret_cast<WNDPROC>(g_unicode ? SetWindowLongPtrW(hwnd, GWLP_WNDPROC, mine)
                                                      : SetWindowLongPtrA(hwnd, GWLP_WNDPROC, mine));
     LOGI("window subclassed (%s)", g_unicode ? "unicode" : "ansi");
+    StartWheel();
     return g_origProc != nullptr;
 }
 
@@ -393,8 +394,9 @@ void DrainToImGui() {
         // Mouse buttons and position are polled every frame instead (Overlay::PollMouse): the game
         // pumps its message queue irregularly, which delayed clicks by seconds.
         if ((m.m >= WM_LBUTTONDOWN && m.m <= WM_MBUTTONDBLCLK) || m.m == WM_MOUSEMOVE ||
-            (m.m >= WM_XBUTTONDOWN && m.m <= WM_XBUTTONDBLCLK))
-            continue;
+            (m.m >= WM_XBUTTONDOWN && m.m <= WM_XBUTTONDBLCLK) || m.m == WM_MOUSEWHEEL ||
+            m.m == WM_MOUSEHWHEEL)
+            continue;  // wheel: see StartWheel
         if (g_debug && (m.m == WM_KEYDOWN || m.m == WM_KEYUP))
             LOGI("input: to imgui msg 0x%X vk 0x%llX", m.m, (unsigned long long)m.w);
         ImGui_ImplWin32_WndProcHandler(m.h, m.m, m.w, m.l);
@@ -418,5 +420,61 @@ void OnOverlayClosed() {
 
 void SetToggleKey(int vk) { g_toggleVk = vk; }
 int ToggleKey() { return g_toggleVk.load(); }
+
+// --- Mouse wheel ---------------------------------------------------------------------------------
+namespace {
+std::atomic<int> g_wheel{0}, g_hwheel{0};
+std::atomic<DWORD> g_wheelTid{0};
+HANDLE g_wheelThread = nullptr;
+
+LRESULT CALLBACK WheelProc(int code, WPARAM w, LPARAM l) {
+    if (code == HC_ACTION && (w == WM_MOUSEWHEEL || w == WM_MOUSEHWHEEL) && Overlay::IsOpen() && g_hwnd &&
+        GetForegroundWindow() == g_hwnd) {
+        auto* m = reinterpret_cast<const MSLLHOOKSTRUCT*>(l);
+        RECT r;
+        POINT pt = m->pt;
+        if (GetClientRect(g_hwnd, &r) && ScreenToClient(g_hwnd, &pt) && PtInRect(&r, pt)) {
+            int d = GET_WHEEL_DELTA_WPARAM(m->mouseData);
+            (w == WM_MOUSEWHEEL ? g_wheel : g_hwheel).fetch_add(d);
+        }
+    }
+    return CallNextHookEx(nullptr, code, w, l);
+}
+
+DWORD WINAPI WheelThread(LPVOID) {
+    HMODULE self = nullptr;
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                       reinterpret_cast<LPCWSTR>(&WheelProc), &self);
+    HHOOK hook = SetWindowsHookExW(WH_MOUSE_LL, &WheelProc, self, 0);
+    if (!hook) LOGW("input: mouse wheel hook unavailable (%lu)", GetLastError());
+
+    MSG msg;
+    while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
+    }
+    if (hook) UnhookWindowsHookEx(hook);
+    return 0;
+}
+}  // namespace
+
+void StartWheel() {
+    if (g_wheelThread) return;
+    DWORD tid = 0;
+    g_wheelThread = CreateThread(nullptr, 0, &WheelThread, nullptr, 0, &tid);
+    g_wheelTid = tid;
+}
+
+void StopWheel() {
+    if (!g_wheelThread) return;
+    // The thread may not have created its queue yet; retry until the quit message lands.
+    for (int i = 0; i < 50 && !PostThreadMessageW(g_wheelTid, WM_QUIT, 0, 0); ++i) Sleep(10);
+    WaitForSingleObject(g_wheelThread, 2000);
+    CloseHandle(g_wheelThread);
+    g_wheelThread = nullptr;
+}
+
+float TakeWheel(float* horizontal) {
+    if (horizontal) *horizontal = g_hwheel.exchange(0) / float(WHEEL_DELTA);
+    return g_wheel.exchange(0) / float(WHEEL_DELTA);
+}
 
 }  // namespace Input

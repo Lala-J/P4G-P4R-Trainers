@@ -137,6 +137,8 @@ void PollMouse() {
     io.AddMouseButtonEvent(0, down(swap ? VK_RBUTTON : VK_LBUTTON));
     io.AddMouseButtonEvent(1, down(swap ? VK_LBUTTON : VK_RBUTTON));
     io.AddMouseButtonEvent(2, down(VK_MBUTTON));
+    float h = 0, v = Input::TakeWheel(&h);
+    if (v != 0 || h != 0) io.AddMouseWheelEvent(-h, v);
 }
 
 void Rebuild() {

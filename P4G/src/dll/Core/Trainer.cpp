@@ -62,12 +62,21 @@ DWORD WINAPI MainThread(LPVOID) {
     LOGI("unload requested");
     Overlay::BeginUnload();
     Hooks::DisableAll();
+    Input::StopWheel();
     if (!Input::RestoreWndProc()) {
         // Freeing our code now would leave a dangling window procedure. Stay loaded, inert.
         LOGE("unload aborted: the trainer stays loaded but inactive until the game exits");
         return 0;
     }
-    if (!Hooks::WaitIdle(3000)) LOGW("a detour was still running after 3 s; continuing");
+    // Never free our code while a detour may still be running in it (a long frame, a modal
+    // loop inside the game): wait, and if it never returns, stay loaded but inert.
+    if (!Hooks::WaitIdle(3000)) {
+        LOGW("a detour is still running; waiting for it to return");
+        if (!Hooks::WaitIdle(120000)) {
+            LOGE("unload aborted: a detour never returned; the trainer stays loaded but inactive");
+            return 0;
+        }
+    }
     Overlay::Shutdown();
     Hooks::Shutdown();
     LOGI("unloaded cleanly");

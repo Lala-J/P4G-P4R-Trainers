@@ -39,6 +39,18 @@ static ImFont* TryFont(const std::string& dir, const char* file, float px,
     return ImGui::GetIO().Fonts->AddFontFromFileTTF(path.c_str(), px, &cfg, ranges);
 }
 
+// Segoe UI has few symbols (no check mark, few dingbats); Segoe UI Symbol fills them in.
+static void MergeSymbols(const std::string& dir, float px) {
+    static const ImWchar sym[] = {0x2190, 0x21FF, 0x2600, 0x27BF, 0};
+    std::string path = dir + "\\seguisym.ttf";
+    if (GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+    ImFontConfig cfg;
+    cfg.MergeMode = true;
+    cfg.OversampleH = 2;
+    cfg.OversampleV = 2;
+    ImGui::GetIO().Fonts->AddFontFromFileTTF(path.c_str(), px, &cfg, sym);
+}
+
 void LoadFonts(float scale) {
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->Clear();
@@ -52,10 +64,15 @@ void LoadFonts(float scale) {
         0x2700, 0x27BF,  // dingbats (check marks)
         0,
     };
-    g_fonts.body = TryFont(dir, "segoeui.ttf", 19.0f * scale, ranges);
-    g_fonts.bold = TryFont(dir, "seguisb.ttf", 19.0f * scale, ranges);
-    g_fonts.title = TryFont(dir, "seguibl.ttf", 30.0f * scale, ranges);
-    g_fonts.note = TryFont(dir, "segoeui.ttf", 15.0f * scale, ranges);
+    auto load = [&](const char* file, float px) {
+        ImFont* f = TryFont(dir, file, px, ranges);
+        if (f) MergeSymbols(dir, px);
+        return f;
+    };
+    g_fonts.body = load("segoeui.ttf", 19.0f * scale);
+    g_fonts.bold = load("seguisb.ttf", 19.0f * scale);
+    g_fonts.title = load("seguibl.ttf", 30.0f * scale);
+    g_fonts.note = load("segoeui.ttf", 15.0f * scale);
     if (!g_fonts.body) {
         LOGW("Segoe UI not found in the Fonts folder; using ImGui's built-in font");
         ImFontConfig cfg;

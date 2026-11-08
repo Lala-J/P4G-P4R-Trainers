@@ -5,6 +5,7 @@
 #include "Engine/GameState.h"
 #include "Engine/Names.h"
 #include "Features/Edits.h"
+#include "Features/PersonaStock.h"
 #include "Features/Spoilers.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -180,6 +181,214 @@ void DrawEditor(const Game::Snapshot& s) {
            "Persona and may behave oddly on another.");
 }
 
+
+// --- Stock management and getting Personas --------------------------------------------------
+
+bool SameForm(const Game::Persona& a, const Game::Persona& b) {
+    if (a.level != b.level || a.exp != b.exp) return false;
+    for (int i = 0; i < 8; ++i)
+        if (a.skills[i] != b.skills[i]) return false;
+    for (int i = 0; i < 5; ++i)
+        if (a.stats[i] != b.stats[i] || a.bonus[i] != b.bonus[i]) return false;
+    return true;
+}
+
+void DrawStockManager(const Game::Snapshot& s) {
+    SectionHeader("STOCK & COMPENDIUM");
+    W::Dim("%d of %d slots used. Saving to the compendium works like the Velvet Room's Register.",
+           PersonaStock::Count(), PersonaStock::Capacity());
+    if (!ImGui::BeginTable("stock", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) return;
+    ImGui::TableSetupColumn("Persona", 0, 2.0f);
+    ImGui::TableSetupColumn("Compendium", 0, 1.6f);
+    ImGui::TableSetupColumn("Save", 0, 1.4f);
+    ImGui::TableSetupColumn("Remove", 0, 1.2f);
+    for (int i = 0; i < Game::kStock; ++i) {
+        const auto& p = s.stock[i];
+        if (!p.valid) continue;
+        ImGui::PushID(i);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::Text("%s  Lv %u", Names::PersonaOr(p.id).c_str(), p.level);
+        if (i == s.equippedSlot) {
+            ImGui::SameLine();
+            W::Chip("EQUIPPED", C::Yellow);
+        }
+        ImGui::TableNextColumn();
+        const Game::Persona* c = PersonaStock::CompendiumEntry(p.id);
+        bool same = c && SameForm(*c, p);
+        if (!c) W::Dim("Not registered");
+        else if (same) W::Dim("Up to date");
+        else W::Dim("Saved copy: Lv %u", c->level);
+        ImGui::TableNextColumn();
+        ImGui::BeginDisabled(same);
+        if (W::RiskButton("Save to compendium", Risk::Safe,
+                          "Registers this Persona as it is now, replacing the saved copy."))
+            PersonaStock::Register(i);
+        ImGui::EndDisabled();
+        ImGui::TableNextColumn();
+        const char* why = PersonaStock::WhyNotRemove(i);
+        ImGui::BeginDisabled(why != nullptr);
+        if (W::RiskButton("Remove", Risk::Caution,
+                          "Takes it out of the stock the way fusion uses up an ingredient. Undo puts the "
+                          "same Persona back."))
+            PersonaStock::Remove(i);
+        ImGui::EndDisabled();
+        if (why && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", why);
+        ImGui::PopID();
+    }
+    ImGui::EndTable();
+}
+
+int g_pick = -1;
+char g_pickFilter[32] = "";
+
+// Golden's two new arcana belong to links that are spoilers until met: Jester (Adachi) and Aeon
+// (Marie). Their Personas stay hidden until the link has started, or is revealed.
+int ArcanaLink(uint8_t arcana) {
+    switch (arcana) {
+        case 25: return 31;  // Jester -> Adachi
+        case 27: return 33;  // Aeon -> Marie
+    }
+    return 0;
+}
+
+bool ArcanaVisible(const Game::Snapshot& s, uint8_t arcana) {
+    int link = ArcanaLink(arcana);
+    if (!link) return true;
+    const Game::Link* e = s.FindLink(uint16_t(link));
+    return Spoilers::Visible(Spoilers::Kind::Link, link, e && e->rank);
+}
+
+bool NgVisible(uint16_t id, const PersonaStock::Info& i) {
+    if (!ArcanaVisible(Game::Current(), i.arcana)) return false;
+    if (!i.ngPlus) return true;
+    bool known = PersonaStock::Registered(id) || PersonaStock::SlotOf(id) >= 0;
+    return Spoilers::Visible(Spoilers::Kind::Persona, id, known);
+}
+
+void DrawPickDetail(const Game::Snapshot& s, uint16_t id) {
+    auto i = PersonaStock::Describe(id);
+    if (!i.yours) return;
+    ImGui::Spacing();
+    if (!NgVisible(id, i)) {
+        Spoilers::HiddenPlaceholder(Spoilers::Kind::Persona, id, "a New Game+ Persona");
+        return;
+    }
+    ImGui::PushFont(g_fonts.title);
+    ImGui::Text("%s", Names::PersonaOr(id).c_str());
+    ImGui::PopFont();
+    std::string arc = Names::Arcana(i.arcana);
+    W::Chip(arc.empty() ? "?" : arc.c_str(), W::ArcanaColor(i.arcana));
+    ImGui::SameLine();
+    W::Dim("Base level %u", i.baseLevel);
+    bool have = PersonaStock::SlotOf(id) >= 0, reg = PersonaStock::Registered(id);
+    if (have) {
+        ImGui::SameLine();
+        W::Chip("IN STOCK", C::Green);
+    }
+    if (reg) {
+        ImGui::SameLine();
+        W::Chip("REGISTERED", C::Blue);
+    }
+    if (i.special) {
+        ImGui::SameLine();
+        W::Chip("SPECIAL FUSION", C::PanelHi, C::White);
+    }
+
+    int yuLevel = s.U(Game::Yu).level;
+    bool above = i.baseLevel > yuLevel;
+    ImVec4 warn = ImGui::ColorConvertU32ToFloat4(C::Orange);
+    ImGui::PushTextWrapPos(0);
+    if (i.ngPlus)
+        ImGui::TextColored(warn, "Normally only available in New Game+. It works in a first playthrough, but the "
+                                 "game never expects you to have it before the ending.");
+    if (i.ultimate)
+        ImGui::TextColored(warn, "The game normally lets you fuse this only after the %s link reaches its max rank.",
+                           arc.c_str());
+    if (above)
+        ImGui::TextColored(warn, "Its base level (%u) is above Yu's (%d). The game never hands out a Persona above "
+                                 "your level; it works normally once you have it.",
+                           i.baseLevel, yuLevel);
+    ImGui::PopTextWrapPos();
+
+    Theme::Risk risk = i.ngPlus ? Risk::Dangerous : ((above || i.ultimate) ? Risk::Caution : Risk::Safe);
+    const char* why = PersonaStock::WhyNotGive(id);
+    ImGui::BeginDisabled(why != nullptr);
+    if (W::RiskButton("Get it (base form)", risk,
+                      "Creates it exactly as a new Persona starts out (base level, stats and skills) and adds it "
+                      "to the stock. A first-time Persona is registered in the compendium, as the game does."))
+        PersonaStock::Give(id);
+    ImGui::EndDisabled();
+    if (reg) {
+        int fee = PersonaStock::Price(id);
+        const char* whyPay = PersonaStock::WhyNotSummon(id, true);
+        const char* whyFree = PersonaStock::WhyNotSummon(id, false);
+        char label[64];
+        snprintf(label, sizeof label, "Summon saved copy (¥%d)", fee < 0 ? 0 : fee);
+        ImGui::SameLine();
+        ImGui::BeginDisabled(whyPay != nullptr);
+        if (W::RiskButton(label, Risk::Safe, "The Velvet Room's compendium summon: same fee, same saved copy."))
+            PersonaStock::Summon(id, true);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(whyFree != nullptr);
+        if (W::RiskButton("Summon free", Risk::Caution, "The compendium summon without the fee."))
+            PersonaStock::Summon(id, false);
+        ImGui::EndDisabled();
+        if (!why && whyPay && !whyFree) W::Dim("%s", whyPay);
+    }
+    if (why) W::Dim("%s", why);
+}
+
+void DrawGive(const Game::Snapshot& s) {
+    float sc = Overlay::Scale();
+    SectionHeader("GET A PERSONA");
+    if (!PersonaStock::Available()) {
+        W::Dim("Unavailable on this game build (a host check failed).");
+        return;
+    }
+    W::Dim("Every Persona Yu can hold, by arcana, with its base level. Party members' Personas aren't listed.");
+    ImGui::SetNextItemWidth(240 * sc);
+    ImGui::InputTextWithHint("##pf", "Filter by name", g_pickFilter, sizeof g_pickFilter);
+    if (g_pick > 0) DrawPickDetail(s, uint16_t(g_pick));
+    ImGui::BeginChild("give", ImVec2(0, 300 * sc), ImGuiChildFlags_Borders);
+    int cols = W::Columns(190 * sc);
+    for (int arc = 0; arc < 32; ++arc) {
+        int n = 0;
+        for (uint16_t id = 1; id < 256; ++id) {
+            auto i = PersonaStock::Describe(id);
+            if (!i.yours || i.arcana != arc) continue;
+            bool vis = NgVisible(id, i);
+            std::string nm = vis ? Names::PersonaOr(id) : std::string("???");
+            if (!Contains(nm, g_pickFilter)) continue;
+            if (n == 0) {
+                ImGui::Spacing();
+                if (!ArcanaVisible(s, uint8_t(arc))) {
+                    // The whole arcana is a spoiler: one placeholder instead of its Personas.
+                    W::Chip("???", C::PanelHi, C::Grey);
+                    ImGui::SameLine();
+                    Spoilers::HiddenPlaceholder(Spoilers::Kind::Link, ArcanaLink(uint8_t(arc)),
+                                                "an arcana you haven't met yet");
+                    break;
+                }
+                // The World arcana holds only the New Game+ Persona; its name is an ending spoiler.
+                std::string an = (arc == 24 && !vis) ? std::string("???") : Names::Arcana(uint8_t(arc));
+                W::Chip(an.empty() ? "?" : an.c_str(), W::ArcanaColor(uint8_t(arc)));
+            }
+            if (n++ % cols) ImGui::SameLine();
+            ImGui::PushID(id);
+            char label[64];
+            bool have = PersonaStock::SlotOf(id) >= 0;
+            snprintf(label, sizeof label, "%s%s  %u", have ? "\xE2\x9C\x93 " : "", nm.c_str(), i.baseLevel);
+            if (have) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(C::Green));
+            if (ImGui::Selectable(label, g_pick == id, 0, ImVec2(176 * sc, 0))) g_pick = id;
+            if (have) ImGui::PopStyleColor();
+            ImGui::PopID();
+        }
+    }
+    ImGui::EndChild();
+}
+
 }  // namespace
 
 namespace Pages {
@@ -208,6 +417,8 @@ void Personas() {
     }
 
     DrawEditor(s);
+    if (PersonaStock::Available()) DrawStockManager(s);
+    DrawGive(s);
 
     SectionHeader("PARTY MEMBERS");
     W::Dim("A party member's level is their Persona's level.");

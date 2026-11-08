@@ -22,6 +22,13 @@ bool ReadPad(XINPUT_STATE* out);
 // Replays window messages captured on the window thread into ImGui (render thread).
 void DrainToImGui();
 
+// Mouse wheel. The game's message pump doesn't deliver WM_MOUSEWHEEL reliably, so a low-level
+// mouse hook on the trainer's own thread collects wheel turns over the game window while the
+// overlay is open. TakeWheel returns the notches since the last call (render thread).
+void StartWheel();
+void StopWheel();               // before unloading
+float TakeWheel(float* horizontal);
+
 // Presses the game's Confirm key (from its own key bindings) for the next keyboard poll.
 void InjectConfirm();
 

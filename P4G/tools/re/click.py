@@ -2,6 +2,7 @@
 """Click inside the game window at client coordinates (for driving the trainer UI in tests).
 
     python click.py <x> <y> [--right] [--double]
+    python click.py <x> <y> --wheel N     # scroll N notches there (negative = down)
 
 Coordinates are in game-window client pixels (1920x1080 at native resolution).
 Refuses to click unless the game is the foreground window.
@@ -32,6 +33,12 @@ def main():
     user32.ClientToScreen(h, ctypes.byref(pt))
     user32.SetCursorPos(pt.x, pt.y)
     time.sleep(0.25)  # let the UI see the hover before the press
+    if "--wheel" in sys.argv:
+        n = int(sys.argv[sys.argv.index("--wheel") + 1])
+        for _ in range(abs(n)):
+            user32.mouse_event(0x0800, 0, 0, 120 if n > 0 else -120, 0)  # MOUSEEVENTF_WHEEL
+            time.sleep(0.05)
+        return 0
     down, up = ((MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP) if "--right" in sys.argv
                 else (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP))
     for _ in range(2 if "--double" in sys.argv else 1):
