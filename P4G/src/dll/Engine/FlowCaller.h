@@ -22,6 +22,23 @@ struct Result {
 // id = group << 12 | index; groups: 0 common, 1 field, 3 event.
 Result Call(uint16_t id, std::initializer_list<int64_t> args = {});
 
+// Script functions that take more than a frame (shops, the Velvet Room, save screens) return 0 until
+// they finish; a script keeps calling them every frame with the same context. CallYielding does
+// the same: it re-calls the function on each following frame, with its context preserved, until
+// it reports done (or `maxFrames` pass). `onDone` runs on the game thread afterwards.
+void CallYielding(uint16_t id, std::initializer_list<int64_t> args, int maxFrames = 60 * 60 * 30,
+                  void (*onDone)(bool finished) = nullptr);
+bool YieldingBusy();
+
+// A short script: each step runs (yielding as needed) before the next starts, exactly like the
+// game's own field scripts. Only one sequence runs at a time.
+struct Step {
+    uint16_t id;
+    int64_t a[4];
+    int argc;
+};
+bool RunSequence(const Step* steps, int count, const char* what);
+
 // Expected argument count for a function id (-1 if unknown).
 int ArgCount(uint16_t id);
 
@@ -43,7 +60,18 @@ constexpr uint16_t PRODUCE_SHOP = 0x0081;
 constexpr uint16_t LEARN_SL_SKILL = 0x0084;
 constexpr uint16_t ACCEPT_QUEST = 0x3039;
 constexpr uint16_t COMPLETE_QUEST = 0x303A;
-constexpr uint16_t START_SL = 0x3016;  // library name EVT_FUNCTION_0016: spawns the "commu open" card task
+constexpr uint16_t START_SL = 0x3016;
+constexpr uint16_t SAVE_ASK = 0x0092;
+constexpr uint16_t FADE = 0x0016;
+constexpr uint16_t FADE_SYNC = 0x0017;
+constexpr uint16_t CALL_FIELD = 0x0030;
+constexpr uint16_t NS_SAVE = 0x0057;
+constexpr uint16_t SHIROKU_PUB = 0x007E;
+constexpr uint16_t FLD_UNLOAD = 0x1024;  // FLD_FUNCTION_0024: field scripts call it before VELVET_ROOM
+constexpr uint16_t GET_FIELD_MAJOR = 0x1022;
+constexpr uint16_t GET_FIELD_MINOR = 0x1023;
+constexpr uint16_t GOTO_REL_FLOOR = 0x1001;
+constexpr uint16_t GET_FLOOR_ID = 0x1002;  // library name EVT_FUNCTION_0016: spawns the "commu open" card task
 constexpr uint16_t GET_SL_LEVEL = 0x3003;
 constexpr uint16_t INCREASE_SL = 0x3004;
 constexpr uint16_t CHECK_IF_SL_LVLUP = 0x300E;

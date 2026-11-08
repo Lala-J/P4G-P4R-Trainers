@@ -58,6 +58,7 @@ constexpr uintptr_t pFieldIds = 0x140AA8098;    // -> {i32 major, i32 minor, ...
 constexpr uintptr_t FieldIds = 0x140ECA340;
 constexpr uintptr_t InBattle = 0x140ECA358;     // u8                              [MOD:MultiPresence]
 constexpr uintptr_t pBattleMgr = 0x140EC08F0;   // non-null during battle          [MOD:AquaRose7]
+constexpr uintptr_t pDungeonTask = 0x15E438348;  // dungeon floor task (GET_FLOOR_ID reads it) [DRV]
 constexpr uintptr_t pCampMenu = 0x140EC0A40;    // non-null while the camp menu is open [MOD:AquaRose7]
 
 // --- Natives -------------------------------------------------------------------------------

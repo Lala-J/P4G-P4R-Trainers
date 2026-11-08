@@ -13,6 +13,7 @@ void BattlePage();
 void Advanced();
 void EnemyIntel();
 void LevelsExp();
+void FieldDungeon();
 void IntelHud();
 void Settings();
 void About();

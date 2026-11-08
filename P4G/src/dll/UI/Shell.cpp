@@ -39,8 +39,6 @@ PLANNED(DrawToday, "M4b", "Everything you can do in the current time slot, and w
 PLANNED(DrawRomance, "M4c", "Pick a partner by portrait and follow a step-by-step route,",
         "with every step hidden until you choose to reveal it.")
 PLANNED(DrawNgPlus, "M4", "New Game+ carry-overs granted individually, with impact warnings.")
-PLANNED(DrawField, "M4c", "Shops from anywhere, floor select, party changes in dungeons,",
-        "save anywhere, auto-advance for dialogue.")
 
 struct PageDef {
     const char* name;
@@ -55,7 +53,7 @@ const PageDef kPages[] = {
     {"Romance", DrawRomance, false},           {"Case File", Pages::CaseFile, true},
     {"Protagonist", Pages::Protagonist, true}, {"Levels & EXP", Pages::LevelsExp, true},
     {"Enemy Intel", Pages::EnemyIntel, true},         {"NG+ & Unlocks", DrawNgPlus, false},
-    {"Field & Dungeon", DrawField, false},     {"Advanced", Pages::Advanced, true},
+    {"Field & Dungeon", Pages::FieldDungeon, true},     {"Advanced", Pages::Advanced, true},
     {"Settings", Pages::Settings, true},       {"About", Pages::About, true},
 };
 constexpr int kPageCount = int(sizeof kPages / sizeof kPages[0]);
