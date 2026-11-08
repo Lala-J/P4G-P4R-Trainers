@@ -17,14 +17,27 @@ guessing. The Dashboard says so.
 
 #### Install
 
-1. Download the latest release, or build it yourself (Part 2).
-2. Put `P4GTrainer.exe` and `P4GTrainer.dll` in any folder, together. The game folder is
-   not required.
-3. Start Persona 4 Golden. Run `P4GTrainer.exe` once you're at the title screen or in game.
-   - `P4GTrainer.exe --wait` waits for the game to start and then loads.
-   - `P4GTrainer.exe --eject` unloads the trainer; `--reload` swaps in a newer build.
-4. In game, press **Insert**, or **Back + R3** on a controller, to open or close the trainer.
-   Both can be changed on the Settings page (keys the game itself uses are never offered).
+Download the latest release, or build it yourself (Part 2). Then pick one:
+
+**A. Drop-in (starts with the game every time).** Copy `dinput8.dll` and `P4GTrainer.dll` into
+the game folder (Steam → Persona 4 Golden → Manage → Browse local files), next to `P4G.exe`.
+Start the game as usual; the trainer loads by itself a few seconds after the window appears.
+- `dinput8.dll` is a small loader. The game loads it in place of the Windows DLL of that name;
+  it passes everything through to the real one, then loads `P4GTrainer.dll` from the same folder.
+- If the game has been updated and the trainer doesn't recognise it, the trainer stays dormant
+  and the game runs as normal. If `P4GTrainer.dll` is missing, nothing is loaded at all.
+- To start the game without the trainer: untick *Load automatically with the game* on the
+  trainer's Settings page (takes effect next start). To uninstall: remove the two files.
+- Steam's "verify integrity of game files" doesn't touch them (they aren't part of the game).
+
+**B. On demand.** Put `P4GTrainer.exe` and `P4GTrainer.dll` in any folder, together. Start the
+game, then run `P4GTrainer.exe` once you're at the title screen or in game.
+- `P4GTrainer.exe --wait` waits for the game to start and then loads.
+- `P4GTrainer.exe --eject` unloads the trainer; `--reload` swaps in a newer build (this also works
+  with the drop-in).
+
+In game, press **Insert**, or **Back + R3** on a controller, to open or close the trainer. Both
+can be changed on the Settings page (keys the game itself uses are never offered).
 
 While the trainer is open the game receives no input. Inside the trainer, **LB / RB** (or
 Page Up / Page Down) switch pages, and **Esc** or **Start** closes it. Mouse, keyboard and
@@ -110,6 +123,8 @@ P4G/
     UI/                      overlay, theme, shell, portraits and pages
     Core/, Util/             lifecycle, logging, paths, settings, CPK/PAK/TMX readers
   src/injector/              P4GTrainer.exe (attach / eject / hot-swap)
+  src/proxy/                 dinput8.dll: the game-folder loader (forwards to the system dinput8,
+                             then loads P4GTrainer.dll once the game window is up)
   src/tests/                 headless self-test, run by the build
   tools/                     env.sh, build.sh, fetch_deps.sh
   tools/re/                  read-only reverse-engineering helpers and test drivers (screenshots,
@@ -133,7 +148,7 @@ bash tools/build.sh release   # or: debug
 ```
 
 `build.sh` finds Visual Studio with `vswhere` and the Windows SDK through the registry, so no
-paths need to be configured. It builds the DLL and the injector, runs the self-test and the
+paths need to be configured. It builds the DLL, the injector and the `dinput8.dll` loader, runs the self-test and the
 public-repo check, and stages `P4G/dist/`.
 
 To have the public-repo check run on every commit:

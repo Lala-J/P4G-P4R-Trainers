@@ -80,11 +80,12 @@ MINHOOK_SRC="third_party/minhook/src/buffer.c third_party/minhook/src/hook.c
              third_party/minhook/src/trampoline.c third_party/minhook/src/hde/hde64.c"
 DLL_SRC=$(find src/dll -name '*.cpp' | sort)
 INJ_SRC=$(find src/injector -name '*.cpp' | sort)
+PROXY_SRC=$(find src/proxy -name '*.cpp' | sort)
 
 echo "=== compile ($CFG, $BUILD_ID) ==="
 run_parallel $CXX_3P -- $IMGUI_SRC
 run_parallel $C_3P -- $MINHOOK_SRC
-run_parallel $CXX_OWN -- $DLL_SRC $INJ_SRC src/tests/selftest.cpp
+run_parallel $CXX_OWN -- $DLL_SRC $INJ_SRC $PROXY_SRC src/tests/selftest.cpp
 if [ -s "$FAILFILE" ]; then
     echo; echo "compile errors in:"; sed 's/^/  /' "$FAILFILE"
     fail=1
@@ -107,6 +108,10 @@ if [ $fail -eq 0 ]; then
         -OUT:"$OUT/P4GTrainer.exe" -PDB:"$OUT/P4GTrainer_exe.pdb" \
         $(objs $INJ_SRC) kernel32.lib user32.lib shell32.lib ole32.lib advapi32.lib || fail=1
 
+    echo "=== link dinput8.dll (game-folder autoloader) ==="
+    "$LINK_EXE" -nologo -DLL -DEBUG -OPT:REF -MACHINE:X64         -OUT:"$OUT/dinput8.dll" -PDB:"$OUT/dinput8.pdb"         $(objs $PROXY_SRC) kernel32.lib user32.lib         | grep -v "^ *Creating library" || true
+    [ -f "$OUT/dinput8.dll" ] && [ "$OUT/dinput8.dll" -nt "$(obj_of $PROXY_SRC)" ] || fail=1
+
     echo "=== self-test ==="
     "$LINK_EXE" -nologo -DEBUG -MACHINE:X64 -SUBSYSTEM:CONSOLE -OUT:"$OUT/test/selftest.exe" \
         -PDB:"$OUT/test/selftest.pdb" \
@@ -126,7 +131,7 @@ fi
 # Stage dist/: overwrite the payload; move anything stale into .trash/ (never delete).
 DIST="dist"
 mkdir -p "$DIST"
-KEEP="P4GTrainer.dll P4GTrainer.exe P4GTrainer.pdb README.md LICENSE"
+KEEP="P4GTrainer.dll P4GTrainer.exe P4GTrainer.pdb dinput8.dll README.md LICENSE"
 for f in "$DIST"/*; do
     [ -e "$f" ] || continue
     b=$(basename "$f")
@@ -135,7 +140,7 @@ for f in "$DIST"/*; do
         mv -f "$f" "$REPO_ROOT/.trash/dist-stale/$b.$(date +%Y%m%d%H%M%S)" ;;
     esac
 done
-cp -f "$OUT/P4GTrainer.dll" "$OUT/P4GTrainer.exe" "$OUT/P4GTrainer.pdb" "$DIST/"
+cp -f "$OUT/P4GTrainer.dll" "$OUT/P4GTrainer.exe" "$OUT/P4GTrainer.pdb" "$OUT/dinput8.dll" "$DIST/"
 cp -f "$REPO_ROOT/README.md" "$REPO_ROOT/LICENSE" "$DIST/"
 
 echo

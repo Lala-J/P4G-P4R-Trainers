@@ -18,6 +18,7 @@
 #include "UI/Theme.h"
 #include "UI/Widgets.h"
 #include "Util/Paths.h"
+#include "Util/Settings.h"
 
 using namespace Theme;
 
@@ -119,6 +120,23 @@ void Settings() {
     if (ImGui::RadioButton("Hide anything past my progress (recommended)", p == 0)) Spoilers::SetPolicy(Spoilers::Policy::HideFuture);
     if (ImGui::RadioButton("Show everything", p == 1)) Spoilers::SetPolicy(Spoilers::Policy::ShowAll);
     W::Dim("Hidden items show as ??? with a Reveal button that reveals just that one item.");
+
+    SectionHeader("START WITH THE GAME");
+    {
+        wchar_t v[4] = {};
+        bool viaGameFolder = GetEnvironmentVariableW(L"P4GTRAINER_AUTOLOAD", v, 4) > 0;
+        bool on = ::Settings::GetInt("autoload", "enabled", 1) != 0;
+        if (viaGameFolder)
+            W::Dim("This session the trainer was started by dinput8.dll in the game folder.");
+        else
+            W::Dim("To have the trainer start by itself every time the game does, copy dinput8.dll and "
+                   "P4GTrainer.dll into the game folder (Steam: Manage → Browse local files).");
+        if (ImGui::Checkbox("Load automatically with the game", &on)) ::Settings::SetInt("autoload", "enabled", on);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Only matters when the two files are in the game folder. Off: the game starts "
+                              "without the trainer (P4GTrainer.exe can still load it). Takes effect at the next "
+                              "game start.");
+    }
 
     SectionHeader("OPEN / CLOSE THE TRAINER");
     float sc = Overlay::Scale();
