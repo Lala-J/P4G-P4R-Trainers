@@ -50,19 +50,19 @@ The first time the trainer loads in a session it copies your save folder to
 | Dashboard | Today's date and time slot, the case deadline, links ready to rank up, your stats | ✅ |
 | Today | Everything you can do in the current time slot and where to find it, ordered by priority: last chances, romance, social links and hangouts, clubs and jobs, everything else | ✅ |
 | Battle | Infinite HP (no damage, or never below 1) and infinite SP, per member HP/SP, refill | ✅ |
-| Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee | ✅ |
+| Battle overrides | No ailments or knock-downs on the party, enemies always miss, always crit, forced 1 More, a weakness override, unlimited Persona swaps, enemies can't flee (wired to the shadows' own run-away AI; not yet seen live) | ✅ |
 | Inventory | Every item in the game by category, set counts through the game's own routine, items that never run out in battle or the camp menu | ✅ |
 | Personas | Yu's stock and every party member's Persona; edit stats and skills | ✅ |
-| Personas (more) | Get any Persona Yu can hold (base form), remove one, summon from the compendium (with or without the fee), save to the compendium; fuse ultimates before their link is maxed | ✅ |
+| Personas (more) | Get any Persona Yu can hold (base form), remove one, summon from the compendium (with or without the fee), save to the compendium; fusion preview from the game's own fusion; fuse ultimates before their link is maxed | ✅ |
 | Social Links | Rank and points against the game's own thresholds for every link, "ready to rank up", locked-out pairs, spoiler-hidden unmet links | ✅ |
 | Social Links (edits) | Rank-ups that also replay the link's own story effects, "ready at next hangout", with prerequisite warnings | ✅ |
 | Romance | Pick a partner by portrait and follow a step-by-step route; every step stays hidden until you reveal it | ✅ |
-| Case File | The current case, its deadline, days left, and the case timeline | ✅ |
-| Protagonist | Level and EXP; Courage, Knowledge, Diligence, Understanding, Expression with ranks; money; equipment | ✅ |
+| Case File | The current case, its deadline, days left, and the case timeline; every rescue read from the game's own flags | ✅ |
+| Protagonist | Level and EXP; Courage, Knowledge, Diligence, Understanding, Expression with ranks; money; equipment for Yu and the party (what each can wield, from the bag) | ✅ |
 | Levels & EXP | Levels and EXP for Yu, party members and every Persona, using the game's own level-up routines | ✅ |
-| Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel | ✅ |
+| Enemy Intel | Every enemy's affinities shown in the game's own Analysis screen, plus an in-battle panel; every shadow you've met with its level, stats, skills and drops | ✅ |
 | NG+ & Unlocks | New Game+ carry-overs one at a time: social stats, money, the whole compendium, the New Game+ Persona | ✅ |
-| Field & Dungeon | Shops and the Velvet Room from anywhere in town, next / previous floor, the whole floor revealed on the minimap, save anywhere, auto-advance for dialogue | ✅ |
+| Field & Dungeon | Shops and the Velvet Room from anywhere in town, next / previous floor, return to the entrance (Goho-M), party changes, the Fox's SP recovery, the whole floor revealed on the minimap, save anywhere, auto-advance for dialogue, a guard against a game crash at some staircases | ✅ |
 | Advanced | Undo journal for every change | ✅ |
 | Advanced (more) | Browser for the game's event flags and counters, with known meanings, "changed since opened", and journaled edits | ✅ |
 
