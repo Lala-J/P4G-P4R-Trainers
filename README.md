@@ -45,7 +45,8 @@ You need the Steam version of Persona 4 Golden, game version 1.0.5 (the current 
 
 1. In Steam, right-click Persona 4 Golden → **Manage** → **Browse local files**.
 2. Copy `dinput8.dll` and `P4GTrainer.dll` from the zip's `Autoload` folder next to `P4G.exe`.
-3. Play as usual. A few seconds after the game window appears, press **Insert**.
+3. Play as usual. A few seconds after the game window appears, press **Insert** (or **L3 + R3**
+   on a controller).
 
 **Manual** loads it only when you ask.
 
@@ -76,14 +77,16 @@ folder.
 
 | | Keyboard | Controller |
 |---|---|---|
-| Open / close the trainer | `Insert` | `Back` + `R3` |
+| Open / close the trainer | `Insert` | `L3` + `R3` |
 | Switch pages | `Page Up` / `Page Down` | `LB` / `RB` |
 | Close | `Esc` | `Start` |
-| Autoplay on / off, during a conversation | `A` | |
+| Autoplay on / off, during a conversation | `A` | `X` / `Square` |
 
-The mouse works everywhere too, and all of these can be rebound. While the trainer is open the
-game gets none of your input (keys, clicks, mouse movement, controller), so nothing you do in
-the trainer can pick a menu option behind it.
+The mouse works everywhere too, and all of these can be rebound. The open/close combo and the
+autoplay button are read from the same controller input the game uses, so they follow your
+pad whichever way it's connected. While the trainer is open the game gets none of your input
+(keys, clicks, mouse movement, controller), so nothing you do in the trainer can pick a menu
+option behind it.
 
 ## What's on the channel
 
@@ -189,10 +192,10 @@ Turn it on, put the controller down, and let the scene play out.
 - **Unvoiced lines and narration** wait 2.8 seconds once the text is fully on screen. Both
   timings can be changed.
 - **Only the conversation box.** Choices, menus, tutorials and pop-ups are always left to you.
-- **Press `A` during a conversation** to switch it on or off. *Autoplay On* shows above the box
-  while it's running. Outside conversations A does what it always does, and you can pick a
-  different key on the Field & Dungeon page.
-- Holding any key pauses it, and it waits while the trainer is open.
+- **Press `A` during a conversation** (or `X` on a controller) to switch it on or off.
+  *Autoplay On* shows above the box while it's running. Outside conversations the key and the
+  button do what they always do, and you can pick different ones on the Field & Dungeon page.
+- Holding any key or button pauses it, and it waits while the trainer is open.
 
 ## Playing it safe
 

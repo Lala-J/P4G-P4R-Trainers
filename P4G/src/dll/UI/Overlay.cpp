@@ -36,7 +36,7 @@ ID3D11RenderTargetView* g_rtv = nullptr;
 HWND g_hwnd = nullptr;
 unsigned g_bbHeight = 1080;
 float g_userScale = 1.0f;
-WORD g_prevButtons = 0;
+bool g_prevCombo = false;
 unsigned g_frame = 0;
 
 float BaseScale() {
@@ -186,9 +186,11 @@ void OnPresent(IDXGISwapChain* sc) {
     bool pad = Input::ReadPad(&ps);
     WORD b = pad ? ps.Gamepad.wButtons : 0;
     WORD mask = Input::PadComboMask();
-    auto combo = [mask](WORD x) { return (x & mask) == mask; };
-    if (combo(b) && !combo(g_prevButtons)) Toggle();
-    g_prevButtons = b;
+    uint32_t vmask = Input::PadComboVita();
+    // XInput pads, or any controller through the game's own pad read (Steam Input, DirectInput).
+    bool combo = (b & mask) == mask || (vmask && (Input::GamePadHeld() & vmask) == vmask);
+    if (combo && !g_prevCombo) Toggle();
+    g_prevCombo = combo;
 
     bool open = IsOpen();
     if (open != g_wasOpen) {

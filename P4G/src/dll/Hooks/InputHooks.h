@@ -59,20 +59,28 @@ bool GameUsesKey(int dik);      // bound to an action in the game's own key conf
 bool GameUsesKeyInDialogue(int dik);  // bound to Up, Down, Confirm or Cancel
 int ToggleKeyDik();             // the trainer's open/close key as a DirectInput scan code
 
-// Auto-advance's on/off key (DirectInput scan code, 0 = none). While "live" (a dialogue page is
-// showing and the trainer is closed) its presses are counted and kept from the game.
+// Auto-advance's on/off key (DirectInput scan code, 0 = none) and controller button (a bit of
+// the game's Vita-layout pad read, so any controller the game reads works; 0 = none). While
+// "live" (a dialogue page is showing and the trainer is closed) their presses are counted and
+// kept from the game.
 void SetAutoAdvanceKey(int dik);
+void SetAutoAdvancePad(uint32_t vitaButton);
 void SetAutoAdvanceKeyLive(bool live);
 int TakeAutoAdvanceKeyPresses();
+bool GameUsesPadInDialogue(uint32_t vitaButton);  // Up, Down, Confirm or Cancel on a controller
 
+// Controller combos that open and close the trainer: XInput buttons, and the same buttons in
+// the game's own pad read (which also covers Steam Input and DirectInput controllers).
 struct PadCombo {
     WORD mask;
+    uint32_t vita;
     const char* name;
 };
 const PadCombo* PadCombos(int* count);
 void SetPadCombo(int index);
 int PadComboIndex();
 WORD PadComboMask();
+uint32_t PadComboVita();
 const char* PadComboName();
 
 void LoadHotkeys();             // from settings.ini [input]

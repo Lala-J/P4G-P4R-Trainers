@@ -51,7 +51,7 @@ A. AUTOLOAD - the trainer starts with the game every time
    2. Copy both files from the "Autoload" folder (dinput8.dll and P4GTrainer.dll)
       into that folder, next to P4G.exe.
    3. Start the game as usual. A few seconds after the window appears, press
-      Insert (or Back + R3 on a controller) to open the trainer.
+      Insert (or L3 + R3 on a controller) to open the trainer.
    To start the game without it: untick "Load automatically with the game" on the
    trainer's Settings page. To uninstall: remove the two files again.
 

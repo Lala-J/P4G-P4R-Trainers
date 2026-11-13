@@ -227,6 +227,18 @@ const KeyChoice kKeyChoices[] = {
     {0xD1, "Page Down"},
 };
 
+// The on/off controller button, as a bit of the game's pad read (PS Vita layout; the game
+// maps an Xbox pad's A/B/X/Y to Cross/Circle/Square/Triangle). Buttons the game uses in
+// conversations (Confirm, Cancel, D-pad Up/Down for choices) are refused by the picker, as is
+// any button of the trainer's own open/close combo.
+const KeyChoice kPadChoices[] = {
+    {0, "None"},
+    {0x8000, "X / Square"},     {0x1000, "Y / Triangle"},  {0x4000, "A / Cross"},   {0x2000, "B / Circle"},
+    {0x400, "LB / L1"},         {0x800, "RB / R1"},        {0x100, "LT / L2"},      {0x200, "RT / R2"},
+    {0x2, "L3"},                {0x4, "R3"},               {0x1, "Back / Select"},  {0x8, "Start"},
+    {0x80, "D-pad Left"},       {0x20, "D-pad Right"},     {0x10, "D-pad Up"},      {0x40, "D-pad Down"},
+};
+
 ULONGLONG g_indicatorShown = 0;  // when the badge last had a reason to show
 float g_indicatorAlpha = 0;
 ULONGLONG g_indicatorFrame = 0;
@@ -253,6 +265,23 @@ void SetKey(int dik) {
     SaveOptions();
 }
 
+const KeyChoice* PadChoices(int* count) {
+    *count = int(sizeof kPadChoices / sizeof kPadChoices[0]);
+    return kPadChoices;
+}
+
+const char* PadName(int button) {
+    for (const auto& k : kPadChoices)
+        if (k.dik == button) return k.name;
+    return "None";
+}
+
+void SetPad(int button) {
+    g_o.padButton = button;
+    Input::SetAutoAdvancePad(uint32_t(button));
+    SaveOptions();
+}
+
 void SaveOptions() {
     Settings::SetInt("autoadvance", "enabled", g_o.enabled);
     Settings::SetInt("autoadvance", "voiced", g_o.voicedDelayMs);
@@ -260,6 +289,7 @@ void SaveOptions() {
     Settings::SetInt("autoadvance", "system", g_o.systemDelayMs);
     Settings::SetInt("autoadvance", "perchar", g_o.perCharMs);
     Settings::SetInt("autoadvance", "key", g_o.keyDik);
+    Settings::SetInt("autoadvance", "pad", g_o.padButton);
 }
 
 bool InstallHooks() {
@@ -272,6 +302,10 @@ bool InstallHooks() {
     g_o.keyDik = 0;
     for (const auto& k : kKeyChoices)
         if (k.dik == key) g_o.keyDik = key;
+    int pad = Settings::GetInt("autoadvance", "pad", 0x8000);
+    g_o.padButton = 0;
+    for (const auto& k : kPadChoices)
+        if (k.dik == pad) g_o.padButton = pad;
     // 1.0.1 raised the unvoiced defaults from 2 s to 2.8 s; settings saved by 1.0.0 still hold
     // the old default, so move those along once.
     if (Settings::GetInt("autoadvance", "rev", 1) < 2) {
@@ -281,6 +315,7 @@ bool InstallHooks() {
         SaveOptions();
     }
     Input::SetAutoAdvanceKey(g_o.keyDik);
+    Input::SetAutoAdvancePad(uint32_t(g_o.padButton));
     if (!HostCheck::GroupOk("dialogue")) return false;
     g_ready = Hooks::Create("MsgWindow::DrawDialog", reinterpret_cast<void*>(Addr::DrawDialog), &Draw_Hook, &o_Draw);
     return g_ready;
@@ -327,7 +362,8 @@ void Tick() {
         g_o.enabled = !g_o.enabled;
         SaveOptions();
         RestartWaits(now);
-        LOGI("dialogue: auto-advance turned %s with %s", g_o.enabled ? "on" : "off", KeyName(g_o.keyDik));
+        LOGI("dialogue: auto-advance turned %s (key %s / button %s)", g_o.enabled ? "on" : "off",
+             KeyName(g_o.keyDik), PadName(g_o.padButton));
     }
     UpdateIndicator(boxShown, otherShown, now);
     const char* before = g_status;

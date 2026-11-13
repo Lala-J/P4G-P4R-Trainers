@@ -38,5 +38,10 @@ and uses neutral input (buttons 0, sticks 0x80) if the read fails.
 The trainer returns neutral input from this read while it is open. Buttons and sticks still
 held when it closes stay hidden until they are released.
 
+The trainer's controller shortcuts are taken from this read too (as well as from XInput),
+so they work however the pad is connected: the open/close combo (L3 + R3 by default) and
+auto-advance's on/off button (Square, an Xbox pad's X, by default). The on/off button is
+only taken while a conversation box is showing, and is hidden from the game until released.
+
 `0x1404A20A8` also reads `0x145248348`. It is the key-config screen's "press a button to
 assign" check.

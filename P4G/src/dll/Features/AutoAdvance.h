@@ -18,6 +18,7 @@ struct Options {
     int systemDelayMs = 2800;    // boxes without a speaker name
     int perCharMs = 0;           // optional extra per character for unvoiced pages
     int keyDik = 0x1E;           // on/off key during conversations (DirectInput scan code; 0 = none)
+    int padButton = 0x8000;      // on/off controller button (game's Vita layout: Square = Xbox X; 0 = none)
 };
 
 Options& Opts();
@@ -36,6 +37,11 @@ struct KeyChoice {
 const KeyChoice* KeyChoices(int* count);
 const char* KeyName(int dik);
 void SetKey(int dik);
+
+// The on/off controller button, the same way (dik holds the button bit).
+const KeyChoice* PadChoices(int* count);
+const char* PadName(int button);
+void SetPad(int button);
 
 // The "Autoplay On" badge: 0 hidden .. 1 fully shown (it fades in and out). Shown while
 // auto-advance is on, a conversation box is on screen and the trainer is closed.

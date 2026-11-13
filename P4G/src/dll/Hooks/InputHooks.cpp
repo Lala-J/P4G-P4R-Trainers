@@ -59,6 +59,8 @@ std::atomic<int> g_aaDik{0};
 std::atomic<bool> g_aaLive{false};
 std::atomic<int> g_aaPresses{0};
 bool g_aaPrevDown = false;
+std::atomic<uint32_t> g_aaPad{0};  // the same, as a button in the game's pad read
+uint32_t g_aaPadPrev = 0;          // game thread only
 
 // The game's own binding for Confirm (P4G.ini [ActionConfig] Action04: "1-<DIK>" entries).
 uint8_t ConfirmDik() {
@@ -258,13 +260,21 @@ int CtrlRead_Hook(void* ctx, uint8_t* out) {
     if (r < 0 || !out) return r;
     auto* buttons = reinterpret_cast<uint32_t*>(out + 8);
     uint8_t* sticks = out + 12;
-    g_ctrlHeld = *buttons;
+    uint32_t raw = *buttons;
+    g_ctrlHeld = raw;
     if (Overlay::IsOpen()) {
         g_ctrlLatch |= *buttons;
         g_stickLatch = true;
         *buttons = 0;
         std::memset(sticks, 0x80, 4);
     } else {
+        // Auto-advance's on/off button during a conversation: counted, then hidden from the
+        // game (by the latch below) until it is let go.
+        if (uint32_t aa = g_aaPad.load(); aa && (*buttons & aa) && !(g_aaPadPrev & aa) && g_aaLive.load() &&
+                                          !(g_ctrlLatch & aa)) {
+            g_ctrlLatch |= aa;
+            ++g_aaPresses;
+        }
         // Buttons and sticks still held from inside the trainer stay hidden until let go, so
         // closing it with Start / B / Esc (or holding a direction) doesn't act in the game too.
         if (g_ctrlLatch) {
@@ -276,6 +286,7 @@ int CtrlRead_Hook(void* ctx, uint8_t* out) {
             else g_stickLatch = false;
         }
     }
+    g_aaPadPrev = raw;
     return r;
 }
 
@@ -615,11 +626,12 @@ const KeyOption kKeys[] = {
     {VK_F10, 0x44, "F10"},       {VK_F11, 0x57, "F11"},    {VK_SCROLL, 0x46, "Scroll Lock"},
     {VK_PAUSE, 0xC5, "Pause"},
 };
+// The game's pad read: Select 0x1, L3 0x2, R3 0x4, Start 0x8 (docs/data/input.md).
 const PadCombo kCombos[] = {
-    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_RIGHT_THUMB, "Back + R3"},
-    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_LEFT_THUMB, "Back + L3"},
-    {XINPUT_GAMEPAD_LEFT_THUMB | XINPUT_GAMEPAD_RIGHT_THUMB, "L3 + R3"},
-    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_START, "Back + Start"},
+    {XINPUT_GAMEPAD_LEFT_THUMB | XINPUT_GAMEPAD_RIGHT_THUMB, 0x2 | 0x4, "L3 + R3"},
+    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_RIGHT_THUMB, 0x1 | 0x4, "Back + R3"},
+    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_LEFT_THUMB, 0x1 | 0x2, "Back + L3"},
+    {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_START, 0x1 | 0x8, "Back + Start"},
 };
 std::atomic<int> g_combo{0};
 bool g_boundRead = false;
@@ -699,8 +711,31 @@ int ToggleKeyDik() {
 }
 
 void SetAutoAdvanceKey(int dik) { g_aaDik = (dik > 0 && dik < 256) ? dik : 0; }
+void SetAutoAdvancePad(uint32_t vitaButton) { g_aaPad = vitaButton; }
 void SetAutoAdvanceKeyLive(bool live) { g_aaLive = live; }
 int TakeAutoAdvanceKeyPresses() { return g_aaPresses.exchange(0); }
+
+bool GameUsesPadInDialogue(uint32_t vitaButton) {
+    static uint32_t used = 0;
+    static bool read = false;
+    if (!read) {
+        read = true;
+        wchar_t path[MAX_PATH];
+        if (GetEnvironmentVariableW(L"LOCALAPPDATA", path, MAX_PATH)) {
+            std::wstring ini = std::wstring(path) + L"\\SEGA\\P4G\\P4G.ini";
+            // Up, Down (choice lists), Confirm, Cancel: their "3-n" entries are pad buttons.
+            for (const wchar_t* action : {L"Action00", L"Action01", L"Action04", L"Action05"}) {
+                wchar_t v[128] = {};
+                GetPrivateProfileStringW(L"ActionConfig", action, L"", v, 128, ini.c_str());
+                for (wchar_t* p = v; *p; ++p)
+                    if (p[0] == L'3' && p[1] == L'-' && (p == v || p[-1] == L','))
+                        used |= uint32_t(_wtoi(p + 2));
+            }
+        }
+        used |= 0x10 | 0x40 | 0x4000 | 0x2000;  // the defaults: Up, Down, Cross, Circle
+    }
+    return (used & vitaButton) != 0;
+}
 
 const PadCombo* PadCombos(int* count) {
     *count = int(sizeof kCombos / sizeof kCombos[0]);
@@ -709,10 +744,11 @@ const PadCombo* PadCombos(int* count) {
 void SetPadCombo(int index) {
     if (index < 0 || index >= int(sizeof kCombos / sizeof kCombos[0])) return;
     g_combo = index;
-    Settings::SetInt("input", "padCombo", index);
+    Settings::SetInt("input", "padMask", kCombos[index].mask);
 }
 int PadComboIndex() { return g_combo.load(); }
 WORD PadComboMask() { return kCombos[g_combo.load()].mask; }
+uint32_t PadComboVita() { return kCombos[g_combo.load()].vita; }
 const char* PadComboName() { return kCombos[g_combo.load()].name; }
 
 void LoadHotkeys() {
@@ -720,8 +756,20 @@ void LoadHotkeys() {
     bool known = false;
     for (const auto& k : kKeys) known |= k.vk == vk;
     g_toggleVk = known ? vk : VK_INSERT;
-    int c = Settings::GetInt("input", "padCombo", 0);
-    g_combo = (c >= 0 && c < int(sizeof kCombos / sizeof kCombos[0])) ? c : 0;
+    // The combo is saved as its buttons. 1.0.1 and earlier saved a list position ("padCombo")
+    // in a list that started with Back + R3; a choice made there is carried over.
+    int mask = Settings::GetInt("input", "padMask", 0);
+    if (!mask) {
+        static const WORD kOld[] = {XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_RIGHT_THUMB,
+                                    XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_LEFT_THUMB,
+                                    XINPUT_GAMEPAD_LEFT_THUMB | XINPUT_GAMEPAD_RIGHT_THUMB,
+                                    XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_START};
+        int old = Settings::GetInt("input", "padCombo", -1);
+        if (old >= 0 && old < 4) mask = kOld[old];
+    }
+    g_combo = 0;  // L3 + R3
+    for (int i = 0; i < int(sizeof kCombos / sizeof kCombos[0]); ++i)
+        if (kCombos[i].mask == mask) g_combo = i;
 }
 
 // --- Mouse wheel ---------------------------------------------------------------------------------

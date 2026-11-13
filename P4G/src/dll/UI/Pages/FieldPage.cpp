@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <cstdio>
 
 #include "Features/AutoAdvance.h"
 #include "Features/FieldGuard.h"
@@ -161,10 +162,44 @@ void FieldDungeon() {
             ImGui::SetTooltip("Turns auto-advance on or off while a conversation is on screen. The key is "
                               "only taken during conversations, so everywhere else it does what it always "
                               "does (A, for example, still walks left).");
-        if (o.keyDik)
+        ImGui::SetNextItemWidth(260 * sc);
+        if (ImGui::BeginCombo("On/off button", AutoAdvance::PadName(o.padButton))) {
+            int nb = 0;
+            const AutoAdvance::KeyChoice* buttons = AutoAdvance::PadChoices(&nb);
+            uint32_t combo = Input::PadComboVita();
+            for (int i = 0; i < nb; ++i) {
+                uint32_t bit = uint32_t(buttons[i].dik);
+                bool inCombo = (bit & combo) != 0;
+                bool taken = bit && (Input::GameUsesPadInDialogue(bit) || inCombo);
+                bool cur = uint32_t(o.padButton) == bit;
+                ImGui::PushID(1000 + i);
+                ImGui::BeginDisabled(taken && !cur);
+                if (ImGui::Selectable(buttons[i].name, cur) && !taken) AutoAdvance::SetPad(int(bit));
+                ImGui::EndDisabled();
+                if (taken && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip(inCombo ? "Part of the button combo that opens the trainer."
+                                              : "The game uses this button in conversations.");
+                if (cur) ImGui::SetItemDefaultFocus();
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("The same on a controller: Xbox names first, then PlayStation. Works with any "
+                              "controller the game itself reads, and the button is only taken during "
+                              "conversations.");
+        if (o.keyDik || o.padButton) {
+            char how[96];
+            if (o.keyDik && o.padButton)
+                snprintf(how, sizeof how, "%s (or %s on a controller)", AutoAdvance::KeyName(o.keyDik),
+                         AutoAdvance::PadName(o.padButton));
+            else
+                snprintf(how, sizeof how, "%s", o.keyDik ? AutoAdvance::KeyName(o.keyDik)
+                                                         : AutoAdvance::PadName(o.padButton));
             W::Dim("Press %s during a conversation to turn it on or off. While it's on, \"Autoplay On\" "
-                   "shows above the conversation box.", AutoAdvance::KeyName(o.keyDik));
-        W::Dim("Now: %s. Holding any key pauses it.", AutoAdvance::Status());
+                   "shows above the conversation box.", how);
+        }
+        W::Dim("Now: %s. Holding any key or button pauses it.", AutoAdvance::Status());
     }
 
     SectionHeader("NOT INCLUDED ON PURPOSE");

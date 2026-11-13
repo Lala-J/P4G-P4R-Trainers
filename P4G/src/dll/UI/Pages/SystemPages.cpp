@@ -164,12 +164,17 @@ void Settings() {
     const Input::PadCombo* combos = Input::PadCombos(&nc);
     for (int i = 0; i < nc; ++i) {
         if (i) ImGui::SameLine();
+        bool cur = Input::PadComboIndex() == i;
+        bool clash = (combos[i].vita & uint32_t(AutoAdvance::Opts().padButton)) != 0;
         ImGui::PushID(100 + i);
-        if (ImGui::Selectable(combos[i].name, Input::PadComboIndex() == i, 0, ImVec2(150 * sc, 0)))
-            Input::SetPadCombo(i);
+        ImGui::BeginDisabled(clash && !cur);
+        if (ImGui::Selectable(combos[i].name, cur, 0, ImVec2(150 * sc, 0)) && !clash) Input::SetPadCombo(i);
+        ImGui::EndDisabled();
+        if (clash && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            ImGui::SetTooltip("Uses the button that turns dialogue auto-advance on and off.");
         ImGui::PopID();
     }
-    W::Dim("Both buttons together. Saved for next time.");
+    W::Dim("Both buttons together. Works with any controller the game reads. Saved for next time.");
 }
 
 void About() {
