@@ -205,10 +205,34 @@ void Draw_Hook(uint32_t* info) {
     b->waiting = state == 4 && !choice && b->conversation;
 }
 
-bool UserHoldingInput() {
+bool KeysHeld() {
     for (int vk : {VK_SPACE, VK_RETURN, VK_ESCAPE, VK_BACK, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT})
         if (GetAsyncKeyState(vk) & 0x8000) return true;
-    return Input::GamePadHeld() != 0;  // any button, on any controller the game reads
+    return false;
+}
+
+bool UserHoldingInput() {
+    return KeysHeld() || Input::GamePadHeld() != 0;  // any button, on any controller the game reads
+}
+
+// Diagnostics: what autoplay was doing before the trainer opened, with details, so a stall can
+// be read off the Field & Dungeon page; and a log line when a page sits for a while.
+const char* g_statusLive = "No dialogue";  // the last status while the trainer was closed
+char g_detail[200] = "";
+const void* g_stallLoggedBox = nullptr;
+ULONGLONG g_stallLoggedPage = 0;
+constexpr ULONGLONG kStallLogMs = 12000;
+
+void Describe(const Box& b, ULONGLONG now) {
+    char voice[96] = "none";
+    for (auto& w : g_players)
+        if (w.p && w.voice && w.playing && now - w.seen <= 100) {
+            snprintf(voice, sizeof voice, "player %p cue 0x%X for %.1f s%s", w.p, w.cue, (now - w.started) / 1000.0,
+                     w.music ? " (music)" : "");
+            break;
+        }
+    snprintf(g_detail, sizeof g_detail, "box flags 0x%08X, page up %.1f s, voice: %s, held: pad 0x%X%s",
+             b.lastFlags, (now - b.pageOpened) / 1000.0, voice, Input::GamePadHeld(), KeysHeld() ? " + keys" : "");
 }
 
 // The on/off key. Keys the game reads during conversations (Up/Down for choices, Confirm,
@@ -362,14 +386,32 @@ void Tick() {
         g_o.enabled = !g_o.enabled;
         SaveOptions();
         RestartWaits(now);
-        LOGI("dialogue: auto-advance turned %s (key %s / button %s)", g_o.enabled ? "on" : "off",
-             KeyName(g_o.keyDik), PadName(g_o.padButton));
+        LOGI("dialogue: auto-advance turned %s (key %s / button %s); it was: %s; %s", g_o.enabled ? "on" : "off",
+             KeyName(g_o.keyDik), PadName(g_o.padButton), g_statusLive, g_detail);
     }
     UpdateIndicator(boxShown, otherShown, now);
     const char* before = g_status;
     TickInner();
     if (g_status != before && Trace::Enabled()) LOGI("dialogue: status %s", g_status);
+    if (!Overlay::IsOpen()) g_statusLive = g_status;
+
+    // A conversation page autoplay has sat on for a while (not a choice being made, not the
+    // trainer being open): log once per page why, so a stall can be diagnosed from the log.
+    for (auto& x : g_boxes) {
+        bool choiceUp = (x.lastFlags & 0x38) >= 0x18;
+        if (!x.info || !x.conversation || choiceUp || now - x.lastSeen > 250 || !g_o.enabled || Overlay::IsOpen())
+            continue;
+        if (now - x.pageOpened > kStallLogMs && !(g_stallLoggedBox == x.info && g_stallLoggedPage == x.pageOpened)) {
+            g_stallLoggedBox = x.info;
+            g_stallLoggedPage = x.pageOpened;
+            LOGI("dialogue: autoplay hasn't moved on from this page in %llu s: %s; %s", kStallLogMs / 1000,
+                 g_status, g_detail);
+        }
+    }
 }
+
+const char* StatusBeforeTrainer() { return g_statusLive; }
+const char* StatusDetail() { return g_detail; }
 
 namespace {
 
@@ -391,6 +433,7 @@ void TickInner() {
     } else if (b->heardVoice && !b->voiceEnded) {
         b->voiceEnded = now;
     }
+    if (!Overlay::IsOpen()) Describe(*b, now);
     if (!g_o.enabled) {
         g_status = "Off";
         return;

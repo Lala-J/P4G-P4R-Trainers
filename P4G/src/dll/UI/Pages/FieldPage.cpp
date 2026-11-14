@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <cstdio>
+#include <cstring>
 
 #include "Features/AutoAdvance.h"
 #include "Features/FieldGuard.h"
@@ -200,6 +201,13 @@ void FieldDungeon() {
                    "shows above the conversation box.", how);
         }
         W::Dim("Now: %s. Holding any key or button pauses it.", AutoAdvance::Status());
+        // While the trainer is open autoplay is paused, so also show what it was doing just before:
+        // if it ever seems stuck, this is what to report.
+        const char* before = AutoAdvance::StatusBeforeTrainer();
+        if (o.enabled && *AutoAdvance::StatusDetail() && strcmp(before, "No dialogue") != 0) {
+            W::Dim("Before you opened the trainer: %s.", before);
+            W::Dim("Details: %s", AutoAdvance::StatusDetail());
+        }
     }
 
     SectionHeader("NOT INCLUDED ON PURPOSE");

@@ -196,6 +196,8 @@ Turn it on, put the controller down, and let the scene play out.
   *Autoplay On* shows above the box while it's running. Outside conversations the key and the
   button do what they always do, and you can pick different ones on the Field & Dungeon page.
 - Holding any key or button pauses it, and it waits while the trainer is open.
+- If it ever seems stuck, open the trainer: the Field & Dungeon page shows what it was waiting
+  for just before, which is the thing to put in a bug report.
 
 ## Playing it safe
 

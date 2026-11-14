@@ -26,8 +26,11 @@ void SaveOptions();
 bool InstallHooks();
 void Tick();  // every frame (game thread)
 
-// For the UI: what the current box is doing.
+// For the UI: what the current box is doing; what it was doing before the trainer opened (the
+// trainer pauses it), and the details behind that (box flags, the voice it waits for, held input).
 const char* Status();
+const char* StatusBeforeTrainer();
+const char* StatusDetail();
 
 // The on/off key: choices for the picker, and the current one's name.
 struct KeyChoice {
