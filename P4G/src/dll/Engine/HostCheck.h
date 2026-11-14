@@ -16,6 +16,10 @@ struct Result {
 const Result& Run();           // runs once, then cached
 const Result& Get();
 
+// Every frame: settles probes still waiting for the game to finish starting (pointers it
+// fills in during start-up that were still null when the trainer loaded). Cheap once none wait.
+void Recheck();
+
 // True when every probe in the group passed (and the build is supported).
 bool GroupOk(const char* group);
 

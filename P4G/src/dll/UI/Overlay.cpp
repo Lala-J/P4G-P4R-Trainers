@@ -8,6 +8,7 @@
 #include <atomic>
 
 #include "Engine/GameThread.h"
+#include "Engine/HostCheck.h"
 #include "Features/AutoAdvance.h"
 #include "Features/FieldGuard.h"
 #include "Features/FieldQol.h"
@@ -170,6 +171,7 @@ void Toggle() {
 
 void OnPresent(IDXGISwapChain* sc) {
     if (g_unloading.load()) return;
+    HostCheck::Recheck();
     // Queued game changes apply here, at the top of the frame, on the game's main thread.
     GameThread::BindToCurrent();
     GameThread::Drain();
