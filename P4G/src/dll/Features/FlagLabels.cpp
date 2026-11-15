@@ -8,7 +8,7 @@
 #include "Data/LinkRules.h"
 #include "Data/Links.h"
 #include "Data/Romance.h"
-#include "Data/Today.h"
+#include "Features/WhoIsAround.h"
 #include "Engine/Names.h"
 #include "Features/PersonaStock.h"
 
@@ -58,9 +58,8 @@ const std::map<int, Label>& Table() {
         const auto& r = Data::kRoutes[i];
         if (r.loverFlag >= 0) add(r.loverFlag, Fmt("Dating %s", r.name), true);
     }
-    for (const auto& a : Data::kAvailability)
-        add(a.flag, Fmt("%s is around today (%s)", a.who, a.slot == Data::Slot::Day ? "daytime" : "evening"),
-            SpoilerPerson(a.link));
+    for (const auto& a : Around::Flags())
+        add(a.flag, Fmt("%s: %s", a.who, a.what), a.link && SpoilerPerson(a.link));
     for (int q = 1; q <= 63; ++q) {
         add(255 + q, Fmt("Quest %d available", q), false);
         add(319 + q, Fmt("Quest %d completed", q), false);

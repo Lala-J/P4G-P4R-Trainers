@@ -1,7 +1,6 @@
 #pragma once
-// What can be done in the current time slot. Availability comes from the game's own "who is
-// around today" flags, which the scheduler sets each morning (the same flags the Find-a-Friend
-// mod reads); places are where the game puts each person on those days.
+// What can be done in the current time slot: jobs, clubs and activities by weekday. Who is
+// around for social links comes from Features/WhoIsAround (the game's own schedule flags).
 
 #include <cstdint>
 
@@ -15,43 +14,6 @@ enum class Tier : uint8_t {
     Links = 2,       // social links, hangouts, bike trips
     ClubsJobs = 3,
     Other = 4,
-};
-
-struct Availability {
-    uint16_t link;      // base commu id (0 = not a link)
-    const char* who;
-    Slot slot;
-    int16_t flag;       // the game's availability flag (absolute id)
-    const char* where;
-};
-
-inline constexpr Availability kAvailability[] = {
-    {7, "Yosuke", Slot::Day, 1478, "School rooftop / Junes food court on days off"},
-    {11, "Chie", Slot::Day, 1482, "School rooftop on weekdays; Daidara area on days off"},
-    {5, "Yukiko", Slot::Day, 1476, "1F classroom hallway; bookstore on Sundays"},
-    {10, "Kanji", Slot::Day, 1481, "School front gate / Tatsumi Textiles"},
-    {3, "Rise", Slot::Day, 1460, "1F hallway; Marukyu Tofu on days off"},
-    {2, "Nanako", Slot::Day, 1473, "Dojima residence living room"},
-    {8, "Dojima", Slot::Day, 1479, "Dojima residence (evenings he's home)"},
-    {16, "Kou / Daisuke (Strength)", Slot::Day, 1487, "Gym (basketball) or the field (soccer) after school"},
-    {18, "Naoki", Slot::Day, 1489, "Konishi Liquors (shopping district)"},
-    {19, "Hisano", Slot::Day, 1490, "Samegawa riverbank"},
-    {21, "Ai", Slot::Day, 1492, "Classroom 2-1, 2F"},
-    {25, "Yumi / Ayane (Sun)", Slot::Day, 1499, "Drama room / music room, 3F"},
-    {14, "Naoto", Slot::Day, 1486, "School 1F / northern shopping district"},
-    {33, "Marie", Slot::Day, 1736, "Velvet Room door (shopping district)"},
-    {7, "Yosuke", Slot::Night, 2176, "Central shopping district at night (hangout)"},
-    {11, "Chie", Slot::Night, 2177, "Central shopping district at night (hangout)"},
-    {5, "Yukiko", Slot::Night, 2178, "Central shopping district at night (hangout)"},
-    {10, "Kanji", Slot::Night, 2179, "Central shopping district at night (hangout)"},
-    {3, "Rise", Slot::Night, 2180, "Central shopping district at night (hangout)"},
-    {14, "Naoto", Slot::Night, 2181, "Central shopping district at night (hangout)"},
-    {16, "Kou", Slot::Night, 2182, "Central shopping district at night (hangout)"},
-    {17, "Daisuke", Slot::Night, 2183, "Central shopping district at night (hangout)"},
-    {25, "Yumi", Slot::Night, 2184, "Central shopping district at night (hangout)"},
-    {27, "Ayane", Slot::Night, 2185, "Central shopping district at night (hangout)"},
-    {18, "Naoki", Slot::Night, 2186, "Central shopping district at night (hangout)"},
-    {21, "Ai", Slot::Night, 2187, "Central shopping district at night (hangout)"},
 };
 
 // Evening jobs and activities by weekday (community schedules; bit 0 = Sunday).

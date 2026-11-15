@@ -143,7 +143,8 @@ option behind it.
 ### 📅 Planning
 
 - **Dashboard:** the date, time of day, case deadline and links ready to rank up
-- **Today:** everything you can do right now and where, last chances first
+- **Today:** who's around right now and where to find them, plus everything else you can do,
+  last chances first
 - **Case File:** the current case, days left and the timeline, read from the game's own flags
 - **Protagonist:** Yu's level, the five social stats with their ranks, money
 - **Levels & EXP:** for Yu, the party and every Persona, through the game's level-up code
@@ -365,7 +366,9 @@ Built on [Dear ImGui](https://github.com/ocornut/imgui) (MIT) and
 [MinHook](https://github.com/TsudaKageyu/minhook) (BSD-2). The address table and the game rules
 lean on years of work by the Persona modding community: thanks to AnimatedSwine37, AquaRose7,
 zarroboogs, tge, ShrineFox, rirurin, seyleonhart, DeathChaos25, qSleeP and the authors of the
-Megami Tensei wikis. Their sources are linked in `P4G/docs/research/`.
+Megami Tensei wikis. Their sources are linked in `P4G/docs/research/`. The Today page decides
+who's around with the same checks as AnimatedSwine37's
+[Find-a-Friend](https://github.com/AnimatedSwine37/Find-a-Friend) mod.
 
 ---
 

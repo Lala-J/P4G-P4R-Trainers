@@ -14,6 +14,7 @@
 #include "Engine/GameState.h"
 #include "Features/CaseFile.h"
 #include "Features/Spoilers.h"
+#include "Features/WhoIsAround.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
 #include "UI/Theme.h"
@@ -92,28 +93,33 @@ std::vector<Entry> Build(const Game::Snapshot& s) {
         out.push_back({Data::Tier::LastChance, 1, b, "", r.note ? r.note : ""});
     }
 
-    // Social links available now, from the game's own availability flags.
-    for (const auto& a : Data::kAvailability) {
-        if ((a.slot == Data::Slot::Night) != night) continue;
-        if (!s.Flag(a.flag)) continue;
+    // Social links available now: who the game's schedule puts where (Features/WhoIsAround).
+    for (const auto& a : Around::Now(s)) {
         const Game::Link* e = s.FindLink(a.link);
         const auto* info = Data::Link(a.link);
-        if (info && info->romanceRow && !e) e = s.FindLink(info->romanceRow);
+        if (info && info->romanceRow && (!e || !e->rank)) {
+            const Game::Link* r = s.FindLink(info->romanceRow);
+            if (r && r->rank) e = r;
+        }
         bool started = e && e->rank;
         if (!started && !Spoilers::Visible(Spoilers::Kind::Link, a.link, false)) continue;
-        bool ready = started && e->rank < 10 && e->points >= Game::LinkThreshold(e->id, e->rank);
+        bool ready = a.ready >= 0 ? a.ready == 1
+                                  : started && e->rank < 10 && e->points >= Game::LinkThreshold(e->id, e->rank);
+        bool rankUp = ready && !a.bike && !a.nightOut;
         Entry en;
         en.tier = Dating(s, a.link) || (RomanceRoute(a.link) && started && e->rank >= 7) ? Data::Tier::Romance
                                                                                           : Data::Tier::Links;
-        en.order = ready ? 0 : (started ? 10 + e->rank : 50);
+        en.order = rankUp ? 0 : (started ? 10 + e->rank : 50) + (a.bike ? 1 : 0);
         char b[160];
-        if (!started) snprintf(b, sizeof b, "%s — start the link", a.who);
-        else if (e->rank >= 10) snprintf(b, sizeof b, "%s (max rank) — hang out for points / items", a.who);
-        else if (ready) snprintf(b, sizeof b, "%s — RANK UP READY (rank %d → %d)", a.who, e->rank, e->rank + 1);
+        if (a.bike) snprintf(b, sizeof b, "%s — scooter trip", a.who);
+        else if (!started) snprintf(b, sizeof b, "%s — start the link", a.who);
+        else if (rankUp) snprintf(b, sizeof b, "%s — RANK UP READY (rank %d → %d)", a.who, e->rank, e->rank + 1);
         else snprintf(b, sizeof b, "%s — rank %d", a.who, e->rank);
         en.what = b;
         en.where = a.where;
-        if (a.slot == Data::Slot::Night) en.note = "Evening hangout: points and an item, no rank-up.";
+        if (a.note) en.note = a.note;
+        else if (a.bike) en.note = "Ride somewhere together on your scooters.";
+        else if (a.nightOut) en.note = "Evening hangout: points and an item, no rank-up.";
         out.push_back(en);
     }
 
@@ -182,8 +188,9 @@ void Today() {
         }
     }
     ImGui::Spacing();
-    W::Dim("Who's around comes from the game's own daily schedule flags. Order: last chances, romance, "
-           "social links (ready to rank up first), clubs and jobs, then everything else.");
+    W::Dim("Who's around comes from the game's own daily schedule flags, checked the way the Find-a-Friend "
+           "mod checks them. Order: last chances, romance, social links (ready to rank up first), clubs "
+           "and jobs, then everything else.");
 }
 
 }  // namespace Pages
