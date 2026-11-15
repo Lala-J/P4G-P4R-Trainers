@@ -28,14 +28,22 @@ Draw_t o_Draw = nullptr;
 // the Velvet Room through none of the player API's entry points the game is seen calling), so
 // instead of hooking a start function the trainer watches every CRI player each frame. CRI
 // moves a player onto its active list while it has a sound going, so a sound is "playing" while
-// its player is on that list. A voice line starts with a page (from just before the page opens
-// until it has been typing for a second), and it can run on across later pages of the same
-// box, so each sound is marked a voice when it starts with a page and stays one until it ends.
-// The game plays voices and sound effects on a small set of shared players (the page-advance
-// sound starts with the page too), so the mark belongs to the sound, not the player. Music and
-// ambient loops that happen to start with a page are recognised by running longer than any
-// voice line; sound effects by being over almost at once.
-constexpr ULONGLONG kVoiceCapMs = 30000;  // no voice line runs longer than this
+// its player is on that list. A voice line starts with its page (from just before the page
+// opens until it has been typing for a second or so), so a sound that starts then is that page's
+// voice, and only that page's: the game stops a voice when Confirm advances its page, so anything
+// still playing after a press is something else (a new music track that happened to start with
+// a page held up every page after it until this rule). The one exception is a page the game
+// turns by itself, which a line can run on over (CarryVoices). The game plays voices, sound
+// effects and music on a small set of shared players (the page-advance sound starts with the
+// page too), so the mark belongs to the sound. A sound that runs longer than any voice line
+// stops counting then. Music is told apart by its sound bank: every music player plays every
+// track from the one music bank, while voices come from a bank of their scene that only the
+// voice player plays from. So a bank more than one player has played from, with a sound that ran
+// past the cap, is music or ambience, and nothing from it is a voice from then on. (Marking the
+// player instead, as before, once took the voice player for music after one long sound there,
+// and every voice after it was skipped.) Short sound effects don't count either (kSfxMs).
+constexpr ULONGLONG kVoiceCapMs = 30000;  // no voice line runs longer than this (longest seen: 23 s)
+constexpr ULONGLONG kStuckMs = 120000;    // a sound whose play count hasn't passed the cap by now never will
 constexpr ULONGLONG kSfxMs = 600;         // a sound shorter than this isn't a voice line
 // A page's voice starts within this long of the page opening (seen: up to 0.6 s after a new
 // box starts opening, which is a little after its text is fully shown). No page is advanced
@@ -46,18 +54,49 @@ struct Player {
     void* p = nullptr;
     uint32_t cue = 0;       // CRI's current cue for it
     uint32_t played = 0;    // ms of that cue played
+    uint32_t status = 0;    // CRI's player status (for the diagnostics)
     bool playing = false;   // on CRI's active list
     ULONGLONG started = 0;  // when its current sound started
     ULONGLONG seen = 0;     // last frame it was on one of CRI's lists
-    bool voice = false;     // its current sound started with a page
-    bool music = false;     // played past kVoiceCapMs once: never a voice
+    bool voice = false;     // its current sound started with a page...
+    ULONGLONG voicePage = 0;  // ...this one (the page's pageOpened)
+    bool music = false;     // its current sound is music or ambience (or past the cap): never a voice
+    bool capped = false;    // its current sound has run past kVoiceCapMs
+    bool before = false;    // its current sound was already going when the trainer first saw it
+    uintptr_t bank = 0;     // the sound bank (ACB) of its current sound
 };
 Player g_players[32];
+
+// Sound banks seen on CRI's players: which players played from each, and whether a sound from
+// it ever ran past kVoiceCapMs.
+struct Bank {
+    uintptr_t id = 0;
+    const void* first = nullptr;  // the first player seen playing from it
+    bool shared = false;          // ...and another one since
+    bool longSound = false;
+    bool logged = false;
+    ULONGLONG seen = 0;
+    bool Music() const { return shared && longSound; }
+};
+Bank g_banks[24];
+
+Bank* FindBank(uintptr_t id, ULONGLONG now) {
+    if (!id) return nullptr;
+    Bank* old = &g_banks[0];
+    for (auto& b : g_banks) {
+        if (b.id == id) return &b;
+        if (!b.id || b.seen < old->seen) old = &b;  // free, else the longest unused
+    }
+    *old = Bank{id};
+    old->seen = now;
+    return old;
+}
 bool g_ready = false;  // the dialogue hooks and CRI's player lists were recognised
 
 struct Raw {
     void* p;
     uint32_t status, cue, played;
+    uintptr_t bank;
     bool active;
 };
 
@@ -74,6 +113,7 @@ int WalkList(uintptr_t list, bool active, Raw* out, int n, int max) {
             out[n].status = *reinterpret_cast<uint32_t*>(node + 0x20);
             out[n].cue = *reinterpret_cast<uint32_t*>(node + 0x88);
             out[n].played = *reinterpret_cast<uint32_t*>(node + 0x1C8);
+            out[n].bank = *reinterpret_cast<uintptr_t*>(node + 0x188);
             out[n].active = active;
             ++n;
             node = *reinterpret_cast<uint8_t**>(node + 0x10);
@@ -93,52 +133,99 @@ void PollPlayers(ULONGLONG now) {
         Player* w = nullptr;
         for (auto& x : g_players)
             if (x.p == r.p) w = &x;
+        bool firstSight = false;
         if (!w) {
             w = &g_players[0];
             for (auto& x : g_players)
                 if (!x.p || x.seen < w->seen) w = &x;  // free, else the longest gone
             *w = Player{r.p};
+            firstSight = true;
         }
         bool playing = r.active && (r.status == 1 || r.status == 2);  // preparing / playing
         // A new sound: the player became active, or (if the next one started before we saw
-        // the last end) its cue changed or its play time went back.
-        if (playing && (!w->playing || r.cue != w->cue || r.played + 100 < w->played)) {
+        // the last end) its cue, bank or play time changed.
+        if (playing &&
+            (!w->playing || r.cue != w->cue || r.bank != w->bank || r.played + 100 < w->played)) {
             w->started = now;
             w->voice = false;
+            w->capped = false;
+            w->before = firstSight;  // already going when the trainer started watching
         }
         w->playing = playing;
+        w->status = r.status;
         w->cue = r.cue;
         w->played = r.played;
+        w->bank = r.bank;
         w->seen = now;
+        // How long a sound has run: CRI's own count, which stands still while the game's audio
+        // is paused (a voice line paused for 20 s with the game was once cut short by counting
+        // the time we'd watched it instead). It can't run ahead of the clock, so for a sound we
+        // saw start both must pass the cap (a count left over from the player's last sound for
+        // a frame can't), while one already going when the trainer started has only the count.
+        // Watching time alone is a last resort, for a count that never moves.
+        bool pastCap = r.played > kVoiceCapMs && (w->before || now - w->started > kVoiceCapMs);
+        if (playing && !w->capped && (pastCap || now - w->started > kStuckMs)) {
+            w->capped = true;
+            if (w->voice)
+                LOGI("dialogue: sound player %p cue 0x%X bank %p ran past %llu s: no longer counted as a voice",
+                     w->p, w->cue, (void*)r.bank, kVoiceCapMs / 1000);
+        }
+        // Every player holding a bank counts, idle or not: the music players all keep the music
+        // bank, so it is known as shared from the first frame.
+        Bank* bk = FindBank(r.bank, now);
+        if (bk) {
+            bk->seen = now;
+            if (!bk->first) bk->first = r.p;
+            else if (bk->first != r.p) bk->shared = true;
+            if (playing && w->capped) bk->longSound = true;
+            if (bk->Music() && !bk->logged) {
+                bk->logged = true;
+                LOGI("dialogue: sound bank %p is music or ambience (several players, a sound past %llu s): "
+                     "never a voice",
+                     (void*)bk->id, kVoiceCapMs / 1000);
+            }
+        }
+        w->music = w->capped || (bk && bk->Music());
     }
 }
 
-// Marks the sounds that started as this page opened as voices.
+// Marks the sounds that started as this page opened as this page's voice.
 void LearnVoices(ULONGLONG pageOpened, ULONGLONG now) {
     for (auto& w : g_players) {
         if (!w.p || !w.playing || w.voice || w.music || now - w.seen > 100) continue;
         if (w.started + 150 >= pageOpened && w.started <= pageOpened + kVoiceStartMs) {
             w.voice = true;
-            if (Trace::Enabled()) LOGI("dialogue: player %p cue 0x%X started with the page", w.p, w.cue);
+            w.voicePage = pageOpened;
+            if (Trace::Enabled())
+                LOGI("dialogue: player %p cue 0x%X status %u started with the page", w.p, w.cue, w.status);
         }
     }
 }
 
-// Whether a voice is playing; `longEnough` once one has played past a sound effect's length.
-bool VoicePlaying(ULONGLONG now, bool* longEnough) {
+// Whether this page's voice is playing; `longEnough` once it has played past a sound effect's
+// length.
+bool VoicePlaying(ULONGLONG pageOpened, ULONGLONG now, bool* longEnough) {
     bool playing = false;
     for (auto& w : g_players) {
-        if (!w.p || !w.voice || w.music || !w.playing || now - w.seen > 100) continue;
-        if (now - w.started > kVoiceCapMs) {
-            w.music = true;
-            if (Trace::Enabled()) LOGI("dialogue: player %p still playing after 30 s; not a voice", w.p);
+        if (!w.p || !w.voice || w.voicePage != pageOpened || w.music || !w.playing || now - w.seen > 100)
             continue;
-        }
         playing = true;
         if (now - w.started >= kSfxMs) *longEnough = true;
     }
     return playing;
 }
+
+// The game turned a page by itself: a voice line still going runs on over the new page (some
+// lines span a timed page), so it is that page's voice too.
+void CarryVoices(ULONGLONG fromPage, ULONGLONG toPage, ULONGLONG now) {
+    for (auto& w : g_players)
+        if (w.p && w.voice && w.voicePage == fromPage && !w.music && w.playing && now - w.seen <= 100) {
+            w.voicePage = toPage;
+            if (Trace::Enabled()) LOGI("dialogue: player %p cue 0x%X runs on over a page the game turned", w.p, w.cue);
+        }
+}
+
+bool UserHoldingInput();
 
 // Every box DrawDialog reports, tracked separately (several can be drawn each frame; idle ones
 // report state 0).
@@ -191,6 +278,9 @@ void Draw_Hook(uint32_t* info) {
         LOGI("dialogue: box %p flags 0x%08X state %d choice %d", (void*)info, flags, state, choice);
     b->lastFlags = flags;
     if (b->lastState < 0 || state < b->lastState || (state < 4 && b->lastState == 4)) {
+        // Next page of the same box with no press from autoplay or you: the game's own timing.
+        // (A Confirm press stops the voice, so only a page the game turns can carry one.)
+        if (b->lastState >= 0 && !b->pressedAt && !UserHoldingInput()) CarryVoices(b->pageOpened, now, now);
         b->pageOpened = now;  // first page, or the next page of the same box
         b->shownAt = 0;
         b->heardVoice = false;
@@ -221,14 +311,16 @@ const char* g_statusLive = "No dialogue";  // the last status while the trainer 
 char g_detail[200] = "";
 const void* g_stallLoggedBox = nullptr;
 ULONGLONG g_stallLoggedPage = 0;
-constexpr ULONGLONG kStallLogMs = 12000;
+ULONGLONG g_stallClock = 0;  // last time autoplay was off or the trainer open (stalls count from then)
+constexpr ULONGLONG kStallLogMs = 12000;    // a page held this long (after its voice, if any)
+constexpr ULONGLONG kStallVoiceMs = 25000;  // ...or its voice still "playing" this long
 
 void Describe(const Box& b, ULONGLONG now) {
-    char voice[96] = "none";
+    char voice[112] = "none";
     for (auto& w : g_players)
-        if (w.p && w.voice && w.playing && now - w.seen <= 100) {
-            snprintf(voice, sizeof voice, "player %p cue 0x%X for %.1f s%s", w.p, w.cue, (now - w.started) / 1000.0,
-                     w.music ? " (music)" : "");
+        if (w.p && w.voice && w.voicePage == b.pageOpened && w.playing && now - w.seen <= 100) {
+            snprintf(voice, sizeof voice, "player %p cue 0x%X status %u for %.1f s%s", w.p, w.cue, w.status,
+                     (now - w.started) / 1000.0, w.music ? " (music)" : "");
             break;
         }
     snprintf(g_detail, sizeof g_detail, "box flags 0x%08X, page up %.1f s, voice: %s, held: pad 0x%X%s",
@@ -395,17 +487,24 @@ void Tick() {
     if (g_status != before && Trace::Enabled()) LOGI("dialogue: status %s", g_status);
     if (!Overlay::IsOpen()) g_statusLive = g_status;
 
-    // A conversation page autoplay has sat on for a while (not a choice being made, not the
-    // trainer being open): log once per page why, so a stall can be diagnosed from the log.
+    // A conversation page autoplay has sat on for a while (counting only time it was on and the
+    // trainer closed, and not while a choice is being made): log once per page why, so a stall
+    // can be diagnosed from the log. A voice line can run past 20 s, so while one plays only a
+    // page held longer than any voice line counts, and once it ends the time counts from then.
+    if (!g_o.enabled || Overlay::IsOpen()) g_stallClock = now;
     for (auto& x : g_boxes) {
         bool choiceUp = (x.lastFlags & 0x38) >= 0x18;
         if (!x.info || !x.conversation || choiceUp || now - x.lastSeen > 250 || !g_o.enabled || Overlay::IsOpen())
             continue;
-        if (now - x.pageOpened > kStallLogMs && !(g_stallLoggedBox == x.info && g_stallLoggedPage == x.pageOpened)) {
+        ULONGLONG since = x.pageOpened > g_stallClock ? x.pageOpened : g_stallClock;
+        ULONGLONG limit = kStallLogMs;
+        if (x.heardVoice && !x.voiceEnded) limit = kStallVoiceMs;
+        else if (x.voiceEnded > since) since = x.voiceEnded;
+        if (now - since > limit && !(g_stallLoggedBox == x.info && g_stallLoggedPage == x.pageOpened)) {
             g_stallLoggedBox = x.info;
             g_stallLoggedPage = x.pageOpened;
-            LOGI("dialogue: autoplay hasn't moved on from this page in %llu s: %s; %s", kStallLogMs / 1000,
-                 g_status, g_detail);
+            LOGI("dialogue: autoplay hasn't moved on from this page in %llu s%s: %s; %s", limit / 1000,
+                 limit == kStallLogMs && x.voiceEnded ? " since its voice ended" : "", g_status, g_detail);
         }
     }
 }
@@ -426,7 +525,7 @@ void TickInner() {
     }
     LearnVoices(b->pageOpened, now);
     bool longEnough = false;
-    bool playing = VoicePlaying(now, &longEnough);
+    bool playing = VoicePlaying(b->pageOpened, now, &longEnough);
     if (playing) {
         if (longEnough) b->heardVoice = true;
         b->voiceEnded = 0;
