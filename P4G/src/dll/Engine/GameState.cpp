@@ -3,8 +3,11 @@
 #include <cstring>
 
 #include "Engine/Addresses.h"
+#include "Engine/FlowCaller.h"
+#include "Engine/GameThread.h"
 #include "Engine/HostCheck.h"
 #include "Engine/SigScan.h"
+#include "Util/Log.h"
 
 namespace Game {
 
@@ -29,6 +32,31 @@ uintptr_t Deref(uintptr_t cell) {
     if (!Sig::Readable(cell, 8)) return 0;
     uintptr_t v = Read<uintptr_t>(cell);
     return (v && Sig::Readable(v, 8)) ? v : 0;
+}
+
+// The weather is the game's answer to GET_WEATHER, the same call the town's scripts make (Aiya's
+// rainy-day menu, the bug spot). Asked again whenever the day or time slot changes, and every
+// ten seconds or so in case an event changes it; never in battle or without a save.
+void CaptureWeather(Snapshot& s) {
+    static int lastDay = -1, lastTime = -1;
+    static uint64_t lastFrame = 0;
+    if (!s.valid) {
+        s.weather = -1;
+        lastDay = -1;
+        return;
+    }
+    if (s.inBattle || !GameThread::IsGameThread() || !HostCheck::GroupOk("flow")) return;
+    bool slotChanged = s.day != lastDay || s.time != lastTime;
+    if (!slotChanged && s.frame - lastFrame < 600) return;
+    lastFrame = s.frame;
+    auto r = Flow::Call(Flow::Fn::GET_WEATHER, {});
+    if (!r.ok) return;
+    int8_t w = int8_t(int32_t(r.value));
+    if (w != s.weather || slotChanged)
+        LOGI("weather: %d on day %u, time slot %u%s", w, s.day, s.time, (w == 1 || w == 7) ? " (rain)" : "");
+    s.weather = w;
+    lastDay = s.day;
+    lastTime = s.time;
 }
 
 }  // namespace
@@ -80,6 +108,8 @@ void Capture() {
     else if (s.inBattle) s.mode = Mode::Battle;
     else if (s.campMenu) s.mode = Mode::Menu;
     else s.mode = Mode::Field;  // dungeon / event split arrives with the context RE task
+
+    CaptureWeather(s);
 }
 
 const Snapshot& Current() { return g_snap; }

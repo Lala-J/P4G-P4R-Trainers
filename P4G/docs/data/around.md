@@ -70,3 +70,5 @@ the rank-up after each.
 
 Find-a-Friend's Marie check also calls a script function whose meaning isn't known; the
 trainer treats it as "her link has started".
+
+Jobs, Aiya, bug catching and the weather: [jobs.md](jobs.md).

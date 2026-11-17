@@ -18,6 +18,7 @@ struct Snapshot {
     // calendar
     uint16_t day = 0;          // 0 = April 1st
     uint8_t time = 0;          // 0..6 (see Calendar::TimeName)
+    int8_t weather = -1;       // the game's GET_WEATHER for this slot (-1 = not known yet)
 
     uint32_t yen = 0;
     uint16_t party[3] = {};
@@ -36,6 +37,8 @@ struct Snapshot {
     Mode mode = Mode::Unknown;
 
     bool Flag(int n) const { return n >= 0 && n < kFlags && (flags[n >> 3] >> (n & 7)) & 1; }
+    // What the town's scripts test for rain (Aiya, the bug spot, the school entrance): 1 or 7.
+    bool Raining() const { return weather == 1 || weather == 7; }
     const Unit& U(int charId) const { return units[(charId - 1) & 7]; }
     const Link* FindLink(uint16_t id) const {
         for (const auto& l : links)

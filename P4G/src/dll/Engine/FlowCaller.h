@@ -93,6 +93,7 @@ constexpr uint16_t GET_FLOOR_ID = 0x1002;  // library name EVT_FUNCTION_0016: sp
 constexpr uint16_t GET_SL_LEVEL = 0x3003;
 constexpr uint16_t INCREASE_SL = 0x3004;
 constexpr uint16_t CHECK_IF_SL_LVLUP = 0x300E;
+constexpr uint16_t GET_WEATHER = 0x004C;  // the current slot's weather; town scripts treat 1 and 7 as rain
 }  // namespace Fn
 
 }  // namespace Flow

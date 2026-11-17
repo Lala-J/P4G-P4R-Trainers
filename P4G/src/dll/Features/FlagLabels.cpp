@@ -8,6 +8,7 @@
 #include "Data/LinkRules.h"
 #include "Data/Links.h"
 #include "Data/Romance.h"
+#include "Features/Activities.h"
 #include "Features/WhoIsAround.h"
 #include "Engine/Names.h"
 #include "Features/PersonaStock.h"
@@ -60,6 +61,7 @@ const std::map<int, Label>& Table() {
     }
     for (const auto& a : Around::Flags())
         add(a.flag, Fmt("%s: %s", a.who, a.what), a.link && SpoilerPerson(a.link));
+    for (const auto& a : Activities::Flags()) add(a.flag, Fmt("%s: %s", a.what, a.meaning), false);
     for (int q = 1; q <= 63; ++q) {
         add(255 + q, Fmt("Quest %d available", q), false);
         add(319 + q, Fmt("Quest %d completed", q), false);

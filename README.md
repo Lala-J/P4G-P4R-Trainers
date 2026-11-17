@@ -143,8 +143,8 @@ option behind it.
 ### 📅 Planning
 
 - **Dashboard:** the date, time of day, case deadline and links ready to rank up
-- **Today:** who's around right now and where to find them, plus everything else you can do,
-  last chances first
+- **Today:** who's around right now and where to find them, which of your jobs have a shift
+  (by the game's own schedule and weather), plus everything else you can do, last chances first
 - **Case File:** the current case, days left and the timeline, read from the game's own flags
 - **Protagonist:** Yu's level, the five social stats with their ranks, money
 - **Levels & EXP:** for Yu, the party and every Persona, through the game's level-up code
@@ -311,7 +311,7 @@ P4G/
                              game's own script functions), Natives, GameState (per-frame snapshot)
     Features/                one module per feature (Battle, BattleOverrides, Inventory, PersonaStock,
                              SocialLinks, Levels, FieldQol, AutoAdvance, EnemyIntel, Journal, ...)
-    Data/                    small tables: links, cases, romance routes, today's activities,
+    Data/                    small tables: links, cases, romance routes, Today's priority tiers,
                              generated link side effects (*.inc)
     Hooks/                   MinHook wrapper, D3D11 Present, input (DirectInput8, XInput, the game's
                              pad read, window, wheel)

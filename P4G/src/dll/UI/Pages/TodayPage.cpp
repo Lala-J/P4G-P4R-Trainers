@@ -8,10 +8,10 @@
 #include "Data/LinkRules.h"
 #include "Data/Links.h"
 #include "Data/Romance.h"
-#include "Data/Stats.h"
 #include "Data/Today.h"
 #include "Engine/Calendar.h"
 #include "Engine/GameState.h"
+#include "Features/Activities.h"
 #include "Features/CaseFile.h"
 #include "Features/Spoilers.h"
 #include "Features/WhoIsAround.h"
@@ -68,8 +68,6 @@ bool RomanceRoute(uint16_t link) {
 
 std::vector<Entry> Build(const Game::Snapshot& s) {
     std::vector<Entry> out;
-    bool night = s.time >= 5;
-    auto d = Calendar::FromIndex(s.day);
 
     // Last chances: the case deadline and link cutoffs that are close.
     auto st = CaseFile::Current(s);
@@ -123,27 +121,9 @@ std::vector<Entry> Build(const Game::Snapshot& s) {
         out.push_back(en);
     }
 
-    // Clubs / jobs / other activities for this weekday and slot.
-    const auto& yu = s.U(Game::Yu);
-    for (const auto& a : Data::kActivities) {
-        if ((a.slot == Data::Slot::Night) != night) continue;
-        if (!(a.weekdays & (1 << d.weekday))) continue;
-        if (a.fromMonth) {
-            int from = Calendar::ToIndex(a.fromMonth, a.fromDay);
-            if (from >= 0 && s.day < from) continue;
-        }
-        Entry en{a.tier, 100, a.what, a.where, ""};
-        if (a.needStat >= 0) {
-            int have = Data::StatRank(a.needStat, yu.social[a.needStat]);
-            if (have < a.needRank) {
-                char b[96];
-                snprintf(b, sizeof b, "Needs %s rank %d (you have %d).", Data::kStats[a.needStat].name, a.needRank, have);
-                en.note = b;
-                en.order = 200;
-            }
-        }
-        out.push_back(en);
-    }
+    // Jobs and other things to do: the game's own job and schedule flags, and its weather
+    // (Features/Activities).
+    for (auto& a : Activities::Now(s)) out.push_back({a.tier, a.order, std::move(a.what), std::move(a.where), std::move(a.note)});
     std::stable_sort(out.begin(), out.end(), [](const Entry& a, const Entry& b) {
         return a.tier != b.tier ? a.tier < b.tier : a.order < b.order;
     });
@@ -159,9 +139,10 @@ void Today() {
     const auto& s = Game::Current();
     auto d = Calendar::FromIndex(s.day);
     ImGui::PushFont(g_fonts.title);
-    ImGui::Text("%d/%d (%s) — %s", d.month, d.day, Calendar::WeekdayShort(d.weekday), Calendar::TimeName(s.time));
+    ImGui::Text("%d/%d (%s) — %s%s", d.month, d.day, Calendar::WeekdayShort(d.weekday), Calendar::TimeName(s.time),
+                s.Raining() ? " · Rain" : "");
     ImGui::PopFont();
-    if (s.time < 4)
+    if (s.time < 3)
         W::Dim("During the school day most people are busy; this fills in after school and in the evening.");
 
     auto list = Build(s);
@@ -183,14 +164,19 @@ void Today() {
         }
         if (!e.note.empty()) {
             ImGui::Indent();
+            ImGui::PushTextWrapPos(0.0f);
             W::Dim("%s", e.note.c_str());
+            ImGui::PopTextWrapPos();
             ImGui::Unindent();
         }
     }
     ImGui::Spacing();
+    ImGui::PushTextWrapPos(0.0f);
     W::Dim("Who's around comes from the game's own daily schedule flags, checked the way the Find-a-Friend "
-           "mod checks them. Order: last chances, romance, social links (ready to rank up first), clubs "
-           "and jobs, then everything else.");
+           "mod checks them; jobs from the same schedule and the jobs you've signed up for, and the "
+           "weather from the game itself. Order: last chances, romance, social links (ready to rank up "
+           "first), clubs and jobs, then everything else.");
+    ImGui::PopTextWrapPos();
 }
 
 }  // namespace Pages
