@@ -17,6 +17,14 @@ The Steam overlay wraps every DirectInput device the process creates, with a sep
 class per device type. Each wrapper has its own `GetDeviceState`/`GetDeviceData` functions, so
 hooking the keyboard's pair doesn't cover the mouse's.
 
+More than one keyboard can be read in the same frame, each reporting only its own keys: on a ROG
+Ally with a Bluetooth keyboard, holding the auto-advance key turned it on and off every frame,
+because the trainer took the other keyboard's "up" as a release. The trainer now remembers each
+keyboard's last read and counts a key as held while any keyboard read in the last half second
+holds it. The auto-advance key also has to stay released for 80 ms before the next press counts,
+in case a keyboard drops a held key for a moment. The log notes how many keyboards are being
+read, and any such dropout.
+
 ## Merged pad read: `CtrlRead` `0x1404C1E70`
 
 `int (?, SceCtrlData* out)`. It runs the controller-system update (`0x1404A9720`), which fills

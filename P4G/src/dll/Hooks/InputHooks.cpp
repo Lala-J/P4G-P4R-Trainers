@@ -58,7 +58,24 @@ uint8_t g_confirmDik = 0;
 std::atomic<int> g_aaDik{0};
 std::atomic<bool> g_aaLive{false};
 std::atomic<int> g_aaPresses{0};
-bool g_aaPrevDown = false;
+// The key's held state across every keyboard, with a short grace on release: a press only
+// counts once the key has been let go for kAaReleaseMs, so a keyboard that drops a held key for
+// a moment can't turn auto-advance off and on again.
+constexpr ULONGLONG kAaReleaseMs = 80;
+bool g_aaDown = false;      // under g_diMu
+ULONGLONG g_aaUpAt = 0;     // when every keyboard first reported it up while g_aaDown (0: not)
+int g_aaBouncesLogged = 0;
+
+// Several keyboards can be read at once (a handheld's built-in keyboard and a Bluetooth one,
+// for instance). Each reports only its own keys and they are polled one after another, so one
+// keyboard's "up" must not release a key another is holding: a key counts as held while any
+// keyboard read in the last half second holds it.
+struct KbDev {
+    uint8_t down[256];
+    ULONGLONG seen;
+};
+std::map<void*, KbDev> g_kbDevs;  // under g_diMu
+size_t g_kbDevsLogged = 1;
 std::atomic<uint32_t> g_aaPad{0};  // the same, as a button in the game's pad read
 uint32_t g_aaPadPrev = 0;          // game thread only
 
@@ -102,11 +119,30 @@ HRESULT FilterState(IDirectInputDevice8W* self, DWORD cb, LPVOID data, HRESULT h
 
     if (cb == 256) {  // keyboard
         auto* k = static_cast<uint8_t*>(data);
+        ULONGLONG now = GetTickCount64();
+        std::lock_guard<std::mutex> lk(g_diMu);
+
+        // This keyboard's own keys, before anything is injected or hidden, then every recently
+        // read keyboard's merged.
+        KbDev& dev = g_kbDevs[self];
+        for (int i = 0; i < 256; ++i) dev.down[i] = k[i] & 0x80;
+        dev.seen = now;
+        uint8_t any[256] = {};
+        size_t keyboards = 0;
+        for (const auto& [p, d] : g_kbDevs) {
+            if (now - d.seen > 500) continue;
+            ++keyboards;
+            for (int i = 0; i < 256; ++i) any[i] |= d.down[i];
+        }
+        if (keyboards > g_kbDevsLogged) {
+            g_kbDevsLogged = keyboards;
+            LOGI("input: %zu keyboards are being read; a key counts as held while any of them holds it", keyboards);
+        }
+
         if (!open && g_injectPolls.load() > 0) {
             int left = --g_injectPolls;
             if (left >= 1) k[ConfirmDik()] |= 0x80;  // held for one poll, then released
         }
-        std::lock_guard<std::mutex> lk(g_diMu);
         if (Input::g_debug) {
             static uint8_t prev[256];
             for (int i = 0; i < 256; ++i)
@@ -116,22 +152,44 @@ HRESULT FilterState(IDirectInputDevice8W* self, DWORD cb, LPVOID data, HRESULT h
                     prev[i] = k[i];
                 }
         }
-        if (int aa = g_aaDik.load(); aa > 0 && aa < 256) {
-            bool down = (k[aa] & 0x80) != 0;
-            if (!open && down && !g_aaPrevDown && g_aaLive.load() && !g_kbLatch[aa]) {
-                g_kbLatch[aa] = 1;  // hidden from the game (below) until it is released
-                ++g_aaPresses;
+        int aa = g_aaDik.load();
+        if (aa <= 0 || aa >= 256) aa = -1;
+        if (aa >= 0) {
+            if (any[aa]) {
+                if (g_aaDown && g_aaUpAt && g_aaBouncesLogged < 5) {
+                    ++g_aaBouncesLogged;
+                    LOGI("input: auto-advance key let go for only %llu ms while held; not counted as a new press",
+                         now - g_aaUpAt);
+                }
+                g_aaUpAt = 0;
+                if (!g_aaDown) {
+                    g_aaDown = true;
+                    if (!open && g_aaLive.load() && !g_kbLatch[aa]) {
+                        g_kbLatch[aa] = 1;  // hidden from the game (below) until it is released
+                        ++g_aaPresses;
+                    }
+                }
+            } else if (g_aaDown) {
+                if (!g_aaUpAt) g_aaUpAt = now;
+                else if (now - g_aaUpAt >= kAaReleaseMs) {
+                    g_aaDown = false;
+                    g_aaUpAt = 0;
+                }
             }
-            g_aaPrevDown = down;
         }
         for (int i = 0; i < 256; ++i) {
             bool down = (k[i] & 0x80) != 0;
             if (open) {
-                if (down) g_kbLatch[i] = 1;
+                if (down || any[i]) g_kbLatch[i] = 1;
                 k[i] = 0;
             } else if (g_kbLatch[i]) {
-                if (down) k[i] = 0;
-                else g_kbLatch[i] = 0;
+                // Released only once no keyboard holds it (and, for the auto-advance key, once
+                // the release has lasted).
+                if (any[i] || (i == aa && g_aaDown)) {
+                    if (down) k[i] = 0;
+                } else {
+                    g_kbLatch[i] = 0;
+                }
             }
         }
     } else if (cb == sizeof(DIMOUSESTATE) || cb == sizeof(DIMOUSESTATE2)) {
