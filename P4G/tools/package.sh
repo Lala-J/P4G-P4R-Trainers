@@ -33,11 +33,18 @@ out, pkg, name, version, commit = sys.argv[1:6]
 bins = ["P4GTrainer.dll", "P4GTrainer.exe", "dinput8.dll"]
 
 # Nothing machine-specific may ship: drive-letter paths and user-profile paths, ASCII or UTF-16.
-bad = re.compile(rb"[A-Za-z]:\\[^\x00]{2,}|\\Users\\[^\\\x00]+")
+# A leaked path is readable text, so only printable characters count after the drive letter,
+# colon and backslash (or "\Users\"), and UTF-16 is matched as real two-byte characters.
+# (Decoding the whole file as UTF-16 and dropping what didn't fit glued unrelated bytes
+# together, and machine code happened to spell a drive letter and colon that way.)
+P = rb"[\x20-\x7e]"
+W = rb"[\x20-\x7e]\x00"
+bad = re.compile(rb"[A-Za-z]:\\" + P + rb"{2,}|\\Users\\" + P + rb"+")
+wide = re.compile(rb"[A-Za-z]\x00:\x00\\\x00(?:" + W + rb"){2,}|\\\x00U\x00s\x00e\x00r\x00s\x00\\\x00(?:" + W + rb")+")
 for b in bins:
     data = open(os.path.join(out, b), "rb").read()
     hits = [m.group() for m in bad.finditer(data)]
-    hits += [m.group() for m in bad.finditer(data.decode("utf-16le", "ignore").encode("latin-1", "ignore"))]
+    hits += [m.group().decode("utf-16le", "replace") for m in wide.finditer(data)]
     if hits:
         sys.exit(f"package: {b} contains local paths: {hits[:3]}")
 
