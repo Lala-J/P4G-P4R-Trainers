@@ -13,6 +13,7 @@
 #include "Engine/GameState.h"
 #include "Features/Activities.h"
 #include "Features/CaseFile.h"
+#include "Features/SocialLinks.h"
 #include "Features/Spoilers.h"
 #include "Features/WhoIsAround.h"
 #include "UI/Overlay.h"
@@ -50,19 +51,12 @@ ImU32 TierColor(Data::Tier t) {
     }
 }
 
-bool Dating(const Game::Snapshot& s, uint16_t link) {
+// A romance (from the game's lover flag), or a romance route approaching its deciding rank. Once
+// that rank has passed without the flag the two are just friends.
+bool RomanceTier(const Game::Snapshot& s, uint16_t link, int rank) {
+    if (Links::RomanceBond(s, link) != Links::Bond::None) return true;
     for (const auto& r : Data::kRoutes)
-        if (r.link == link) {
-            for (const auto& l : s.links)
-                if (l.id == r.loverRow && l.rank) return true;
-            return r.loverFlag >= 0 && s.Flag(r.loverFlag);
-        }
-    return false;
-}
-
-bool RomanceRoute(uint16_t link) {
-    for (const auto& r : Data::kRoutes)
-        if (r.link == link) return true;
+        if (r.link == link) return rank >= 7 && rank < r.loverRank;
     return false;
 }
 
@@ -105,8 +99,7 @@ std::vector<Entry> Build(const Game::Snapshot& s) {
                                   : started && e->rank < 10 && e->points >= Game::LinkThreshold(e->id, e->rank);
         bool rankUp = ready && !a.bike && !a.nightOut;
         Entry en;
-        en.tier = Dating(s, a.link) || (RomanceRoute(a.link) && started && e->rank >= 7) ? Data::Tier::Romance
-                                                                                          : Data::Tier::Links;
+        en.tier = RomanceTier(s, a.link, started ? e->rank : 0) ? Data::Tier::Romance : Data::Tier::Links;
         en.order = rankUp ? 0 : (started ? 10 + e->rank : 50) + (a.bike ? 1 : 0);
         char b[160];
         if (a.bike) snprintf(b, sizeof b, "%s — scooter trip", a.who);

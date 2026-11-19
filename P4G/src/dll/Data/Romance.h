@@ -18,8 +18,8 @@ struct RomanceStep {
 struct RomanceRoute {
     const char* name;
     uint16_t link;         // base commu id
-    uint16_t loverRow;     // commu id once dating
-    int16_t loverFlag;     // set when the relationship becomes official
+    uint16_t loverRow;     // commu id from the romance rank on, whichever answer you give
+    int16_t loverFlag;     // set when the relationship becomes official (the only sign of it)
     uint8_t bustup;        // bustup character id (portraits)
     uint8_t bustupOutfit;
     uint16_t metFlag;      // party-join flag that also means "met" (0xFFFF = none)

@@ -32,4 +32,12 @@ void RankUpNow(uint16_t baseId);
 void Start(uint16_t baseId);
 void SetPoints(uint16_t baseId, uint16_t points);
 
+// Whether a link has become a romance, from the game's own lover flag. At the romance rank the
+// link's entry moves to its romance-row id whichever answer you give (each rank event's
+// "<name>_friend" procedure), so the row says nothing about it; only the lover procedure sets
+// the flag. Ai's flag also marks the temporary relationship from her rank 6 answer, which her
+// rank 9 scene ends (clearing it); it means a real one only from rank 10.
+enum class Bond { None, Temporary, Dating };
+Bond RomanceBond(const Game::Snapshot& s, uint16_t baseId);
+
 }  // namespace Links

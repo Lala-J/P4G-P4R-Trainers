@@ -11,7 +11,7 @@ namespace Data {
 enum class LinkKind : uint8_t {
     Normal,
     Story,      // advances only through the story (Fool, Star, Judgement, Jester 7+, Hunger)
-    RomanceRow, // the record a romanceable link switches to once you're dating
+    RomanceRow, // the record a romanceable link switches to at its romance rank (either answer)
     Unused,
 };
 
@@ -19,7 +19,7 @@ struct LinkInfo {
     uint16_t id;
     const char* person;   // who the link is with
     LinkKind kind;
-    uint16_t romanceRow;  // commu id used once dating (0 = not romanceable)
+    uint16_t romanceRow;  // commu id used from the romance rank on, dating or not (0 = not romanceable)
     uint16_t baseRow;     // for a romance row: the normal row
     uint16_t exclusive;   // the other link of an either/or pair (0 = none)
     int16_t revealDay;    // day index from which the name is shown before the link starts;

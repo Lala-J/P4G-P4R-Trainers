@@ -5,6 +5,7 @@
 
 #include "Data/LinkRules.h"
 #include "Data/Links.h"
+#include "Data/Romance.h"
 #include "Data/Stats.h"
 #include "Engine/Addresses.h"
 #include "Engine/Calendar.h"
@@ -27,7 +28,8 @@ std::string Fmt(const char* fmt, ...) {
     return b;
 }
 
-// The live entry for a link (base row, or its romance row once dating).
+// The live entry for a link (base row, or the romance row it moves to at its romance rank,
+// whichever answer was given there).
 Game::Link* LiveEntry(uint16_t baseId, uint16_t* liveId) {
     auto* links = reinterpret_cast<Game::Link*>(Addr::SaveBlock + Game::Off::Links);
     const Data::LinkInfo* info = Data::Link(baseId);
@@ -49,6 +51,8 @@ const Game::Link* SnapEntry(const Game::Snapshot& s, uint16_t baseId, uint16_t* 
         }
     return nullptr;
 }
+
+constexpr uint16_t kAi = 21;
 
 bool RankKnown(uint16_t link, uint8_t rank) {
     for (const auto& r : Data::kLinkRanksKnown)
@@ -282,6 +286,17 @@ void Start(uint16_t base) {
         Flow::Call(Flow::Fn::START_SL, {base});
         Journal::Record(Fmt("Started %s's link (card shown by the game)", Person(base)), nullptr);
     });
+}
+
+Bond RomanceBond(const Game::Snapshot& s, uint16_t baseId) {
+    for (const auto& r : Data::kRoutes) {
+        if (r.link != baseId) continue;
+        if (r.loverFlag < 0 || !s.Flag(r.loverFlag)) return Bond::None;
+        const Game::Link* e = SnapEntry(s, baseId, nullptr);
+        int rank = e ? e->rank : 0;
+        return baseId == kAi && rank < 10 ? Bond::Temporary : Bond::Dating;
+    }
+    return Bond::None;
 }
 
 }  // namespace Links

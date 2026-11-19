@@ -5,6 +5,7 @@
 #include "Data/Romance.h"
 #include "Engine/Calendar.h"
 #include "Engine/GameState.h"
+#include "Features/SocialLinks.h"
 #include "Features/Spoilers.h"
 #include "UI/Overlay.h"
 #include "UI/Pages/Pages.h"
@@ -23,9 +24,13 @@ struct Live {
     const Game::Link* link = nullptr;
     int rank = 0;
     bool dating = false;
+    bool temporary = false;  // Ai's relationship from her rank 6 answer, which she ends at rank 9
+    bool friends = false;    // the romance rank has passed without the lover flag
     bool started = false;
 };
 
+// The link's entry moves to its romance row at the romance rank whichever answer you give, so
+// only the game's lover flag says whether it's a romance (Links::RomanceBond).
 Live Read(const Game::Snapshot& s, const Data::RomanceRoute& r) {
     Live l;
     for (const auto& e : s.links)
@@ -33,8 +38,11 @@ Live Read(const Game::Snapshot& s, const Data::RomanceRoute& r) {
             l.link = &e;
             l.rank = e.rank;
             l.started = e.rank > 0;
-            l.dating = e.id == r.loverRow || (r.loverFlag >= 0 && s.Flag(r.loverFlag));
         }
+    auto bond = Links::RomanceBond(s, r.link);
+    l.dating = bond == Links::Bond::Dating;
+    l.temporary = bond == Links::Bond::Temporary;
+    l.friends = l.started && bond == Links::Bond::None && l.rank >= r.loverRank;
     return l;
 }
 
@@ -71,11 +79,13 @@ void Card(int i, const Data::RomanceRoute& r, const Live& l, float w, bool met) 
     if (met) {
         char sub[48];
         if (l.dating) snprintf(sub, sizeof sub, "♥ Dating · rank %d", l.rank);
+        else if (l.temporary) snprintf(sub, sizeof sub, "Temporary · rank %d", l.rank);
+        else if (l.friends) snprintf(sub, sizeof sub, "Friends · rank %d", l.rank);
         else if (l.started) snprintf(sub, sizeof sub, "Rank %d", l.rank);
         else snprintf(sub, sizeof sub, "Not started");
         ImGui::PushFont(g_fonts.note);
         dl->AddText(ImVec2(p.x + 10 * sc + ts.x + 10 * sc, p.y + imgH + 9 * sc),
-                    l.dating ? IM_COL32(240, 90, 150, 255) : C::Grey, sub);
+                    l.dating ? IM_COL32(240, 90, 150, 255) : (l.temporary ? C::Orange : C::Grey), sub);
         ImGui::PopFont();
     }
     ImGui::PopID();
@@ -86,31 +96,36 @@ void Steps(const Game::Snapshot& s, int idx, const Data::RomanceRoute& r, const 
         const auto& st = r.steps[k];
         bool done = st.rank == 0 ? l.started : (st.rank <= 10 ? l.rank >= st.rank : false);
         if (st.rank == r.loverRank) done = l.dating;
-        bool current = !done && (k == 0 || [&] {
+        // Stayed friends at the romance rank: that step and the romance-only ones after it are past.
+        bool skipped = l.friends && st.rank >= r.loverRank;
+        bool current = !done && !skipped && (k == 0 || [&] {
             const auto& prev = r.steps[k - 1];
             return prev.rank == 0 ? l.started : l.rank >= prev.rank;
         }());
         int key = idx * 64 + k;
         ImGui::PushID(key);
-        W::Chip(done ? "DONE" : (current ? "NEXT" : "LATER"), done ? C::Green : (current ? C::Yellow : C::PanelHi),
-                done || current ? C::Black : C::Grey);
+        if (skipped)
+            W::Chip(st.rank == r.loverRank ? "FRIENDS" : "N/A", C::PanelHi, C::Grey);
+        else
+            W::Chip(done ? "DONE" : (current ? "NEXT" : "LATER"), done ? C::Green : (current ? C::Yellow : C::PanelHi),
+                    done || current ? C::Black : C::Grey);
         ImGui::SameLine();
         if (st.rank && st.rank <= 10) {
             W::Dim("Rank %d", st.rank);
             ImGui::SameLine();
         }
         // Each step is hidden until revealed, except ones already done.
-        if (!Spoilers::Visible(Spoilers::Kind::Step, key, done)) {
+        if (!Spoilers::Visible(Spoilers::Kind::Step, key, done || (skipped && st.rank == r.loverRank))) {
             Spoilers::HiddenPlaceholder(Spoilers::Kind::Step, key, "this step");
         } else {
             ImGui::PushTextWrapPos(0);
             ImGui::TextUnformatted(st.text);
-            if (st.avoid) {
+            if (st.avoid && !skipped) {
                 ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Orange), "Avoid: %s", st.avoid);
             }
             ImGui::PopTextWrapPos();
         }
-        if (st.byMonth && !done) {
+        if (st.byMonth && !done && !skipped) {
             int last = Calendar::ToIndex(st.byMonth, st.byDay);
             if (last >= 0 && s.day <= last) W::Dim("%d day(s) left for this (until %d/%d).", last - s.day, st.byMonth, st.byDay);
             else if (last >= 0) ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Red), "Past %d/%d.", st.byMonth, st.byDay);
@@ -183,7 +198,15 @@ void Romance() {
     if (l.dating) {
         ImGui::SameLine();
         W::Chip("♥ OFFICIAL", IM_COL32(240, 90, 150, 255));
+    } else if (l.temporary) {
+        ImGui::SameLine();
+        W::Chip("TEMPORARY", C::Orange, C::Black);
+    } else if (l.friends) {
+        ImGui::SameLine();
+        W::Chip("FRIENDS", C::PanelHi, C::Grey);
     }
+    if (l.temporary) W::Dim("This relationship ends at rank 9 and doesn't lock the route.");
+    else if (l.friends) W::Dim("You chose to stay friends at rank %d.", r.loverRank);
     if (dating && !l.dating)
         ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C::Orange),
                            "You're already dating someone. Starting a second relationship is allowed, but on "

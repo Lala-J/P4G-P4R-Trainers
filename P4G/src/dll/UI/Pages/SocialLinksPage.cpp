@@ -21,9 +21,9 @@ namespace {
 struct Row {
     const Data::LinkInfo* info;
     const Game::Link* link;  // null = not started
-    uint16_t liveId;         // id stored in the array (romance row when dating)
+    uint16_t liveId;         // id stored in the array (the romance row from the romance rank on)
     uint8_t arcana;
-    bool dating, lockedOut, ready, maxed, visible;
+    bool dating, temporary, lockedOut, ready, maxed, visible;
     uint16_t threshold;
 };
 
@@ -40,11 +40,13 @@ std::vector<Row> BuildRows(const Game::Snapshot& s) {
         r.liveId = li.id;
         if (!r.link && li.romanceRow) {
             r.link = s.FindLink(li.romanceRow);
-            if (r.link) {
-                r.liveId = li.romanceRow;
-                r.dating = true;
-            }
+            if (r.link) r.liveId = li.romanceRow;
         }
+        // The romance row is used whichever answer was given at the romance rank; only the
+        // game's lover flag means dating.
+        auto bond = Links::RomanceBond(s, li.id);
+        r.dating = bond == Links::Bond::Dating;
+        r.temporary = bond == Links::Bond::Temporary;
         if (r.link && r.link->rank == 0) r.link = nullptr;
         if (li.exclusive) {
             const Game::Link* other = s.FindLink(li.exclusive);
@@ -90,6 +92,9 @@ void DrawCard(const Row& r, float w) {
     if (r.dating) {
         ImGui::SameLine();
         W::Chip("DATING", IM_COL32(240, 90, 150, 255));
+    } else if (r.temporary) {
+        ImGui::SameLine();
+        W::Chip("TEMPORARY", C::Orange, C::Black);
     }
 
     W::Title(r.info->person);
